@@ -60,7 +60,8 @@
     return 0;*/
 
 void tmr_setup_period(int timer, int ms);
-void tmr_wait_period(int timer);
+int tmr_wait_period(int timer);
+void tmr_wait_ms(int timer, int ms);
 // TODO Insert C++ class definitions if appropriate
 
 // TODO Insert declarations
