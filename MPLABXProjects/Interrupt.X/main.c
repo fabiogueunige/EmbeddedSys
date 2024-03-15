@@ -17,8 +17,51 @@ void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // functio
 int main(void) {
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     // tmr_setup_period(TIMER2, 20);
-    IEC0bits.T1IE = 1;  // Enable interrupt associated to timer 1
-    // tmr_setup_period (TIMER2, 20); // init of the timer
+    // IEC0bits.T1IE = 1;  // Enable interrupt associated to timer 
+    RPINR0bits.INT1R = 0x58; // 0x58 is 88 in hexadecimal
+    INTCON2bits.GIE = 1; // set global interrupt enable
+    
+    
+    while (1)
+    {
+        // blink led 2
+        TRISGbits.TRISG9 = 1; // set pin  to read 
+        if (PORTGbits.RG9 == 0) // reading the pin
+        {
+            TRISGbits.TRISG9 = 0; // set pin to output
+            LATGbits.LATG9 = 1; // write on the pin to turn on the led
+            // tmr_wait_period(TIMER2);
+        }
+        else 
+        {
+            TRISGbits.TRISG9 = 0; // set the pin as output
+            LATGbits.LATG9 = 0; // write on thhe pin to off the led   
+        }
+        tmr_wait_ms(TIMER1,200);
+    }
+       
+    return 0;
+}
+
+void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
+    IFS0bits.T1IF = 0; // reset interrupt flag
+    // Codice da eseguire quando si verifica l'interrupt
+    TRISGbits.TRISG9 = 1; // set pin  to read 
+    if (PORTGbits.RG9 == 0) // reading the pin
+    {
+        TRISGbits.TRISG9 = 0; // set pin to output
+        LATGbits.LATG9 = 1; // write on the pin to turn on the led
+        // tmr_wait_period(TIMER2);
+    }
+    else 
+    {
+        TRISGbits.TRISG9 = 0; // set the pin as output
+        LATGbits.LATG9 = 0; // write on thhe pin to off the led   
+    }
+}
+
+/* main exercise 3.1
+ * // tmr_setup_period (TIMER2, 20); // init of the timer
     // TRISAbits.TRISA0 = 1; // set the pin as input
     TRISGbits.TRISG9 = 0; // write
 
@@ -39,11 +82,12 @@ int main(void) {
             LATAbits.LATA0 = 0; // write on thhe pin to off the led   
         }
         tmr_wait_ms(TIMER2, 50);
-    }    
-    return 0;
-}
-
-void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
+    } 
+ * 
+ * 
+ * 
+ * interrupt exercise 3.1
+ * void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IFS0bits.T1IF = 0; // reset interrupt flag
     // Codice da eseguire quando si verifica l'interrupt
     TRISGbits.TRISG9 = 1; // set pin  to read 
@@ -59,3 +103,4 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
         LATGbits.LATG9 = 0; // write on thhe pin to off the led   
     }
 }
+ */
