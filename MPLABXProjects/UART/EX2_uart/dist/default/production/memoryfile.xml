@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project>
-  <executable name="dist/default/debug/EX2_uart.debug.elf">
+  <executable name="dist/default/production/EX2_uart.production.elf">
     <memory name="data">
       <units>bytes</units>
       <length>53248</length>
-      <used>4</used>
-      <free>53244</free>
+      <used>8</used>
+      <free>53240</free>
     </memory>
     <memory name="program">
       <units>bytes</units>
       <length>524544</length>
-      <used>3600</used>
-      <free>520944</free>
+      <used>3891</used>
+      <free>520653</free>
     </memory>
   </executable>
 </project>
