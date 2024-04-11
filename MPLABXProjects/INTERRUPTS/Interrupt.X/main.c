@@ -24,7 +24,6 @@ int main(void) {
     IEC1bits.INT1IE = 1; // enable interrupt
     
     
-    
     while (1)
     {
         /////////////////////////////////////////////////////////////

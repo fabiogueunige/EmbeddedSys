@@ -88,6 +88,12 @@ int main(void) {
 }
 
 
+void myfunction(int tmr, int tiempo)
+{
+    // wait 7 ms with Timer given
+    tmr_wait_ms(tmr, tiempo);
+}
+
 void __attribute__((interrupt, auto_psv)) _T2Interrupt(void) 
 {
     IFS0bits.T2IF = 0; // reset interrupt flag
@@ -112,10 +118,14 @@ void __attribute__((interrupt, auto_psv)) _T2Interrupt(void)
     }
 }
 
-void myfunction(int tmr, int tiempo)
+void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
 {
-    // wait 7 ms with Timer given
-    tmr_wait_ms(tmr, tiempo);
+    IFS1bits.T4IF = 0; // cleaning the flag of the interrupt
+    
+    if (IFS0bits.T3IF == 0) // chek timer wait period
+    {
+        deadline_count++; // one more missed deadlines
+    }
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
@@ -169,15 +179,6 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
 }
 
-void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
-{
-    IFS1bits.T4IF = 0; // cleaning the flag of the interrupt
-    
-    if (IFS0bits.T3IF == 0) // chek timer wait period
-    {
-        deadline_count++; // one more missed deadlines
-    }
-}
 
 void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void)
 {

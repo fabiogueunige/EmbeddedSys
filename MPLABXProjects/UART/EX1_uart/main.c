@@ -27,7 +27,7 @@ int main(void) {
     U1BRG = round((FCY /(16LL * BAUD_RATE))-1);
     U1BRG = 468;
     U1MODEbits.UARTEN = 1; // enable uart
-    U1STAbits.UTXEN = 1;
+    U1STAbits.UTXEN = 1;7
        
     U1TXREG = 'c';
     //U1TXREG = U1RXREG; assoiate the value on the register to the trasmission

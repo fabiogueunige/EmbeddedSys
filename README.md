@@ -58,6 +58,13 @@ In this exercise are done the exercise 2 and 3 togheter. In this exercise the 'L
 
 ## INTERRUPTS
 
+- For first thing in important to enable the global interrupt enable:
+```c
+INTCON2bits.GIE = 1;
+```
+
+- Reset the flag in the specific register IFSxbits.---
+- Enable teh interrupt in the register IECxbits.---- for the specific interrupt 
 thing to remember about remappable pin:
 
 For the input pin to remap i associate a funcionality to a specific pin.
@@ -88,7 +95,37 @@ RPINR0bits.INT1R = 0x58; // 0x58 is 88 in hexadecimal connecting to remappable p
 
 
 ## UART RS232
-About remappable pin:
+
+Is a asynchronous communication.
+- Full duplex 8 or 9 bit data trasmission
+- One or two stop bits
+- 4-deep FIFO transmitt data buffer
+- Transmitt and receive interrupts
+- Can trasmitt only one bytes (8 bit) 
+
+#### REMAPPABLE PIN
+
 
 - When trasmitt I associate the pin to a specific functionality.
 - When I receive I read the value that arrived on the pin and I associate it to a register. 
+  
+```C
+// remap UART1 pins
+RPOR0bits.RP64R = 1; // remap the pin tx of UART1 (U1TX) (remappable output pin = funcionality)
+RPINR18bits.U1RXR = 0b1001011; // remap the pin rx of UART1 (U1RX) (functionality = remappable input pin)
+```
+
+#### UART TRASMIT
+
+for setup trasmission follow this passage:
+* initialize the **UxBRG** register for the appropriate baud rate: ((FCY/BAUDRATE)/16)-1
+* set the UxTXIE control bit in the corresponding interrupt enable control register IEC, this for enable the interrupt
+* Enable the UART module by setting the **UARTEN** bit (UxMODE<15>)
+* Enable the transmission by setting the **UTXEN** bit (UxSTA<10>), which will also set the **UxTXIF** bit., Remember to put to 0 im the interrupt function
+* Load data into **UxTXREG** register (start trasmission)
+
+#### UART RECEIVER
+- Initialize the **UxBRG** register for the appropriate baud rate (see 17.3 “UART Baud Rate Generator”).
+- If interrupts are desired, set the **UxRXIE** bit in the corresponding Interrupt Enable Control register (IEC). 
+- Enable the UART module by setting the **UARTEN** bit (UxMODE<15>)
+- Read data from the receive buffer **UxRXREG** that contains the character received
