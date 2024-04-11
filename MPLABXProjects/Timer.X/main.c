@@ -14,7 +14,8 @@ int main(void) {
     
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     int ret;
-    tmr_setup_period (TIMER1, 200); // init of the timer
+    // tmr_setup_period (TIMER1, 200); // init of the timer
+    tmr_setup_period (TIMER3, 200);
     // tmr_setup_period(TIMER2, 20);
     // tmr_setup_period (TIMER2, 20); // init of the timer
     // TRISAbits.TRISA0 = 1; // set the pin as input
@@ -23,7 +24,7 @@ int main(void) {
     while(1)
     {   
         // turn on the ledfor 20 ms 
-        tmr_wait_ms(TIMER2, 50);
+        tmr_wait_ms(TIMER4, 50);
         // blink led 1
         TRISAbits.TRISA0 = 1; // set pin  to read 
         if (PORTAbits.RA0 == 0) // reading the pin
@@ -38,7 +39,7 @@ int main(void) {
             LATAbits.LATA0 = 0; // write on thhe pin to off the led   
         }
         
-        ret = tmr_wait_period(TIMER1);
+        ret = tmr_wait_period(TIMER3);
         if (ret)
         {
             // TRISAbits.TRISA0 = 0; // set pin to output

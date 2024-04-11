@@ -13,6 +13,7 @@
 
 // Prototipo della funzione di interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // function to manage the interrupt
+void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void);
 
 int main(void) {
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
