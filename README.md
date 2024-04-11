@@ -79,8 +79,12 @@ For exampe, I want to assciate the U1TX on RP104
 RP0R11bits.RP104R = 1 // 1 = U1TX
 ```
 
-- Example of remmaping the pin RE8 connected to button 2 with the interrupt INT1. IN this case is a case when the value arrive, press the button e wite activate a flag of the input, so we associate the  function INT1 eith the remappable out pin associate at this pin, that is R88, 0x58 in hesadecimal.\
+- Example of remmaping the pin RE8 connected to button 2 with the interrupt INT1. IN this case is a case when the value arrive, press the button e wite activate a flag of the input, so we associate the  function INT1 eith the remappable out pin associate at this pin, that is R88, 0x58 in hesadecimal.
+
+```c
 RPINR0bits.INT1R = 0x58; // 0x58 is 88 in hexadecimal connecting to remappable pin
+```
+
 
 
 ## UART RS232
