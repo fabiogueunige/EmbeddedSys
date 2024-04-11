@@ -62,9 +62,9 @@ thing to remember about remappable pin:
 
 For the input pin to remap i associate a funcionality to a specific pin.
 
-- **functionality = Remappable Input Pin**.
-
 es: maps the U1RX to RPI20
+
+- **functionality = Remappable Input Pin**.
 
 ```c
 TRISbits.TRISA4 = 1 // RP120 is a RA4
@@ -73,7 +73,7 @@ RPINR11bits.U1RXR = 20
 
 For the output, I do the duale, I associate the pin to a specific funcionality
 - **remappable Out Pin = Functionality (Pheriperal Output)**.
-For exampe, I want to assciate the U1TX on RP104
+For exampe, I want to assciate the RP104 on U1TX
 
 ```c
 RP0R11bits.RP104R = 1 // 1 = U1TX
