@@ -24,7 +24,7 @@ CLEAN_SUBPROJECTS=${CLEAN_SUBPROJECTS_${SUBPROJECTS}}
 
 
 # Project Name
-PROJECTNAME=exercise2_Clicker_IO_Posrts_3.X
+PROJECTNAME=Clicker_IO_Posrtsex2.X
 
 # Active Configuration
 DEFAULTCONF=default

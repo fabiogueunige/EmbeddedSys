@@ -20,6 +20,7 @@
                    projectFiles="true">
       <itemPath>main.c</itemPath>
       <itemPath>timer.c</itemPath>
+      <itemPath>ex1main.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>

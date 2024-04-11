@@ -17,22 +17,15 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void){
             
     if(IEC0bits.T1IE == 1){ //if the interrupt associated to the timer is enabled
         IEC0bits.T1IE = 0; //disable the interrupt associated to the timer
-        //TRISGbits.TRISG9 = 0; // set pin to output
-        //LATGbits.LATG9 = 1; // write on the pin to turn on the led
     }
     else{
-        //TRISGbits.TRISG9 = 0; // set pin to output
-        //LATGbits.LATG9 = 0; // write on the pin to turn on the led
         IEC0bits.T1IE = 1; //enable interrupt of the timer    
-       //  IFS0bits.T1IF = 1; // put 1 flag interrupt flag
-        
-    }
-   
+    }  
 }
 
 void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IFS0bits.T1IF = 0; // reset interrupt flag
-    // Codice da eseguire quando si verifica l'interrupt
+    // Code to execute when the interrupt is generated
     TRISGbits.TRISG9 = 1; // set pin  to read 
     if (PORTGbits.RG9 == 0) // reading the pin
     {
@@ -46,7 +39,8 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     }
 }
 
-
+// !!!! WARNING !!!
+// We didn't manage the bouncing of the button with a timer interrupt
 int main(void) {
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     
@@ -61,10 +55,9 @@ int main(void) {
     // menaging the timer
     IEC0bits.T1IE = 1; // enable interrupt flag for timer t1
     IFS0bits.T1IF = 0; // reset interrupt flag
-    
-   
-    while(1){
        
+    while(1){
+       // empty becaouse everything works with the interrpts
     }
 
     return 0;
