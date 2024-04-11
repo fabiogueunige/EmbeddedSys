@@ -13,23 +13,49 @@
 void myfunction(int ,int ); // function that use 7 ms to be completed
 void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void); // interrupt tp blink the led
 short int count = 0; // count for timer 2
+
 // interrupt function for reception
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void);
 // global array of char to save he charcaters
-char msg[3];
+char msg[3]; // array to save the char
+int char_received = 0; // number of char received from RX
+
+// part of T2 button
+void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void); // mappable (butto in our case) interrupt
+
+// part of the timerr to check when outside 10ms the main code
+void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void); 
+void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void); // mappable (butto in our case) interrupt
+int deadline_count = 0; // counter of missed deadlines of the main
 
 int main(void) {
     
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     
     INTCON2bits.GIE = 1; // set global interrupt enable 
+    
+    // timer managing
     tmr_setup_period (TIMER2, 200);
+    tmr_setup_period (TIMER4, 10);
     // timer 1 for myfunction
     // timer 2 for the blink of led2 (blink every two times the variable expired)
     // timer 3 to wait period 3ms
+    // timer 4 to check to respect 100Hz
     IFS0bits.T3IF = 0; // reset interrupt flag
     IEC0bits.T2IE = 1; // enable interrupt timer 2
     IFS0bits.T2IF = 0; // reset flag timer 2
+    IFS1bits.T4IF = 0; // reset interrupt flag
+    IEC1bits.T4IE = 1; // eneble interrrupt flag
+    
+    // Mapping INT1 to RE8 pin of the left button T2 (button managing)
+    RPINR0bits.INT1R = 0x58; // button address
+    IFS1bits.INT1IF = 0; // clear the interrupt flag
+    IEC1bits.INT1IE = 1; // enable interrupt
+    
+    // Mapping INT2 to RE9 pin of the left button T3 (button managing)
+    RPINR1bits.INT2R = 0x59; // button address
+    IFS1bits.INT2IF = 0; // clear the interrupt flag
+    IEC1bits.INT2IE = 1; // enable interrupt
     
     // remap UART1 pins
     RPOR0bits.RP64R = 1; // remap the pin tx of UART1 (U1TX) (remapUARTpin = funcionality)
@@ -43,7 +69,6 @@ int main(void) {
     
     U1STAbits.UTXEN = 1; // UART trasmission enable
     
-    
     // enable for UART flag and interruptts
     IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
@@ -51,6 +76,8 @@ int main(void) {
     // Making the led alive    
     TRISGbits.TRISG9 = 0; // set pin to output of led 2
     LATGbits.LATG9 = 1; // write on the pin to turn on the led  
+    TRISAbits.TRISA0 = 0; // set pin to output
+    LATAbits.LATA0 = 0; // write on the pin to turn on the led
     
     while(1){
         myfunction(TIMER1, 7);
@@ -101,7 +128,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
     }
     
     msg[0] = U1RXREG;
-    U1TXREG = msg[0];
+    char_received ++;
     
     if (msg[2] == 'L' && msg[1] == 'D')
     {
@@ -128,6 +155,37 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
             }
         }
     }
+}
+
+void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
+{
+    IFS1bits.INT1IF = 0; //put to zero the flag
+           
+    U1TXREG = 'C'; // can send only one charcters per time
+    U1TXREG = '=';
+    IEC0bits.U1RXIE = 0; // disable interrupt for UART 1 receiver
+    // this is to access to the share memory
+    U1TXREG = (char) char_received; // send tha number of characters sent
+    IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
+}
+
+void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
+{
+    IFS1bits.T4IF = 0; // cleaning the flag of the interrupt
     
-    // send character by character
+    if (IFS0bits.T3IF == 0) // chek timer wait period
+    {
+        deadline_count++; // one more missed deadlines
+    }
+}
+
+void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void)
+{
+    IFS1bits.INT2IF = 0; // clear the interrupt flag
+    int val;
+    U1TXREG = 'D'; // can send only one charcters per time
+    U1TXREG = '=';
+    val = round(deadline_count/256); 
+    U1TXREG = (char) val;
+    U1TXREG = (char) deadline_count; // send tha number of characters sent
 }
