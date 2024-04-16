@@ -79,9 +79,15 @@ int main(void) {
     TRISAbits.TRISA0 = 0; // set pin to output
     LATAbits.LATA0 = 0; // write on the pin to turn on the led
     
+    // Enable always after the setting
+    
+    
     while(1){
         myfunction(TIMER1, 7);
+        // wait_ms wrong because every time you loose the 10ms period
         tmr_wait_ms(TIMER3, 3); // to have the 100Hz   
+        // Check the deadline not through an interrupt but with the ruturn value
+        // of the setup period
     }
     
     return 0;
@@ -102,6 +108,7 @@ void __attribute__((interrupt, auto_psv)) _T2Interrupt(void)
     {
         count = 0;
         TRISGbits.TRISG9 = 1; // set pin  to read 
+        // Check the value on the letch without changing the reading and output of the pin
         if (PORTGbits.RG9 == 0) // reading the pin
         {
             TRISGbits.TRISG9 = 0; // set pin to output
@@ -136,7 +143,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
     {
         msg[i+1] = msg[i];
     }
-    
+    // do while to empty the buffer to not loose characters
     msg[0] = U1RXREG;
     char_received ++;
     
@@ -170,7 +177,11 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
 void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
 {
     IFS1bits.INT1IF = 0; //put to zero the flag
-           
+    // trasmission has to be done on the main and in this case is not useful the interrupt
+    // the flag of the INT1 is ennough
+    // Always check if the buffer is available to write the charcatters
+    // If debouncing checked then use interrupt and use a globl variable to make 
+    // the main write on the register)
     U1TXREG = 'C'; // can send only one charcters per time
     U1TXREG = '=';
     IEC0bits.U1RXIE = 0; // disable interrupt for UART 1 receiver
@@ -179,10 +190,24 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
 }
 
+<<<<<<< HEAD
+void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
+{
+    // Interrupt unusfull
+    IFS1bits.T4IF = 0; // cleaning the flag of the interrupt
+    
+    if (IFS0bits.T3IF == 0) // chek timer wait period
+    {
+        deadline_count++; // one more missed deadlines
+    }
+}
+=======
+>>>>>>> 62bae2477d2917cf6c141b4517e9a0bb9789cbaf
 
 void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void)
 {
     IFS1bits.INT2IF = 0; // clear the interrupt flag
+    // check other trasmission to see problems
     int val;
     U1TXREG = 'D'; // can send only one charcters per time
     U1TXREG = '=';
