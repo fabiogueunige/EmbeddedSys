@@ -28,13 +28,13 @@ int main(void) {
     // Setting (will check why like that)
     TRISAbits.TRISA1 = 1; // input
     TRISFbits.TRISF12 = 0; // output
-    TRISFbits.TRISF13 = 0;
+    TRISFbits.TRISF13 = 0; // output
     
     // Reception Rx
     // before i set the functionallity and i assign the pin
     RPINR20bits.SDI1R = 0b0010001; // MISO associated to remappable input RPI17 
-    RPOR12bits.RP109R = 0b000101; // MOSI associated to 5 (CAPIREEEE)
-    RPOR11bits.RP108R = 0b000110;
+    RPOR12bits.RP109R = 0b000101; // look in (pg 215 where there are all the functionalities) looking for SDO1 
+    RPOR11bits.RP108R = 0b000110; // clock SKC because synchronouse
     
     // remap UART1 pins
     RPOR0bits.RP64R = 1; // remap the pin tx of UART1 (U1TX) (remapUARTpin = funcionality)
@@ -47,9 +47,6 @@ int main(void) {
     U1MODEbits.UARTEN = 1; // enable uart
     
     U1STAbits.UTXEN = 1; // UART trasmission enable
-    
-    // enable for UART flag and interruptts
-    IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
     
     int write_return = 0;
     
@@ -73,7 +70,7 @@ int spi_write (unsigned int addr)
 {
     int data;
     while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
-    SPI1BUF = addr; // send the address
+    SPI1BUF = addr; // send the address of the device
     while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd
     data = SPI1BUF; // the byte sent from the slave
     // while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
