@@ -190,7 +190,7 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
 }
 
-<<<<<<< HEAD
+
 void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
 {
     // Interrupt unusfull
@@ -201,8 +201,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
         deadline_count++; // one more missed deadlines
     }
 }
-=======
->>>>>>> 62bae2477d2917cf6c141b4517e9a0bb9789cbaf
 
 void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void)
 {
