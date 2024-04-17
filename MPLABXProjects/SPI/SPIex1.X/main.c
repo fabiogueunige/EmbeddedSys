@@ -50,12 +50,15 @@ int main(void) {
     
     int write_return = 0;
     
-    LATDbits.LATD6 = 0;
+    PORTD.bits.RD6 = 0; // chip select, select the chip connected to the magnotometer
+    // LATDbits.LATD6 = 0;
     write_return = spi_write(0x4B);
     while (U1STAbits.UTXBF != 0);
     U1TXREG = write_return;
     write_return = spi_write(0x01);
-    LATDbits.LATD6 = 1;
+    // LATDbits.LATD6 = 1;
+    PORTD.bits.RD6 = 1;
+
     while (U1STAbits.UTXBF != 0);
     U1TXREG = write_return;
     
@@ -68,7 +71,7 @@ int main(void) {
 
 int spi_write (unsigned int addr)
 {
-    int data;
+    int data; 
     while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
     SPI1BUF = addr; // send the address of the device
     while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd
@@ -76,3 +79,7 @@ int spi_write (unsigned int addr)
     // while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
     return data;
 }
+
+
+
+
