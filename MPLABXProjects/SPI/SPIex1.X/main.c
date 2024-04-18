@@ -12,6 +12,7 @@
 #include <string.h>
 
 void print(int);
+void printImu(int);
 int spi_write (unsigned int, int , int*);
 
 
@@ -85,21 +86,15 @@ int main(void) {
     while(1)
     {/*
         x_lsb = spi_write(0x42, 0x00, x_msb);
-        // while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        /*U1TXREG = 'I';
         print(x_lsb);
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = 'S';// 
-        // print(x_msb);
-        x_lsb = x_lsb & 0xF8;
+        print(x_msb);
+        x_lsb = x_lsb & 0xF8; // 
         // x_msb << 8; // msb shifted of 8 of left
         x_msb = (x_msb << 8) | x_lsb; // the union of lsb and msb shifted
-        x_msb = x_msb / 8;
-        // while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        // U1TXREG = 'F';
-        print (x_msb);
+        x_msb = x_msb / 8; // divide the value by 8
+        printImu (x_msb);
         tmr_wait_period (TIMER2);
-        */
+     */
     }
     return 0;
 }
@@ -130,6 +125,28 @@ void print(int stamp)
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
         U1TXREG = buff [i];
     }
+    while (U1STAbits.UTXBF != 0); // ask if we can use this register
+    U1TXREG = ' ';
+}
+
+void printImu(int stamp)
+{
+    char buff[20];
+    char str[] = "$MAGX=";
+    char result [40];
+    sprintf(buff,"%d", stamp);
+    
+    // copy "$MAG" at the beginning of result
+    strcpy(result, str);
+    // copy the value string after "$MAG" in result
+    strcat(result, buff);
+    for (int i = 0; result[i] != 0; i++)
+    {
+        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        U1TXREG = buff [i];
+    }
+    while (U1STAbits.UTXBF != 0); // ask if we can use this register
+    U1TXREG = ' ';
 }
 
 
