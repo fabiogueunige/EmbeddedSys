@@ -190,18 +190,6 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void)
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
 }
 
-
-void __attribute__((__interrupt__, __auto_psv__)) _T4Interrupt(void)
-{
-    // Interrupt unusfull
-    IFS1bits.T4IF = 0; // cleaning the flag of the interrupt
-    
-    if (IFS0bits.T3IF == 0) // chek timer wait period
-    {
-        deadline_count++; // one more missed deadlines
-    }
-}
-
 void __attribute__((interrupt, auto_psv)) _INT2Interrupt(void)
 {
     IFS1bits.INT2IF = 0; // clear the interrupt flag
