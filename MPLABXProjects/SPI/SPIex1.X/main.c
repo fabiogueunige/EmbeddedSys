@@ -10,6 +10,7 @@
 #include <math.h>
 #include "timer.h"
 #include <string.h>
+#include <stdio.h>
 
 void print(int);
 void printImu(int);
@@ -29,14 +30,13 @@ int main(void) {
     SPI1STATbits.SPIEN = 1; // enable the SPI 
     
     // Remapping of the magnetometer
-    // Setting (will check why like that)
     TRISAbits.TRISA1 = 1; // input
     TRISFbits.TRISF12 = 0; // output
     TRISFbits.TRISF13 = 0; // output
     
     // Reception Rx
     // before i set the functionallity and i assign the pin
-    RPINR20bits.SDI1R = 0b0010001; // MISO associated to remappable input RPI17 
+    RPINR20bits.SDI1R = 0b0010001; // (pp 99 and 213) MISO associated to remappable input RPI17 
     RPOR12bits.RP109R = 0b000101; // look in (pg 215 where there are all the functionalities) looking for SDO1 
     RPOR11bits.RP108R = 0b000110; // clock SKC because synchronouse
     
@@ -54,16 +54,33 @@ int main(void) {
     
     int chip_val = 0;
     int *bau;
-    int x_lsb = 0;
-    int x_msb = 0;
+    int x_lsb = 0; // less significant bit
+    int x_msb = 0; // most significant
     
-    TRISDbits.TRISD6 = 0; // set the pin as output
+    TRISBbits.TRISB3 = 0; 
+
+    TRISBbits.TRISB4 = 0;
+
+    TRISDbits.TRISD6 = 0; // set as output for the magnometer
+
+    LATBbits.LATB3 = 1; 
+
+    LATBbits.LATB4 = 1; 
+
+    LATDbits.LATD6 = 1;
     //PORTDbits.RD6 = 0; ERROR is to read
     
     // going on sleep mode
     LATDbits.LATD6 = 0; // chip select, select the chip connected to the magnotometer
     chip_val = spi_write(0x4B, 0x01, bau);
     LATDbits.LATD6 = 1;
+    /*
+Quando si comunica tramite SPI, è comune utilizzare un pin CS per selezionare il dispositivo con cui si desidera comunicare. Il pin CS deve essere portato a basso prima di inviare dati al dispositivo e portato ad alto dopo la trasmissione per indicare al dispositivo che la comunicazione è terminata.
+
+Quindi, LATDbits.LATD6 = 0; imposta il pin CS a basso prima di iniziare a scrivere dati al dispositivo SPI, mentre LATDbits.LATD6 = 1; lo riporta ad alto dopo che la comunicazione è terminata. Questo assicura che il dispositivo SPI sia correttamente selezionato durante la trasmissione dei dati e che sia deselezionato quando la trasmissione è completata.
+
+Senza queste istruzioni, il dispositivo SPI potrebbe non ricevere correttamente i dati o potrebbe essere selezionato per un periodo più lungo del necessario, il che potrebbe portare a comportamenti imprevisti nella comunicazione.
+     */
     
     tmr_wait_ms (TIMER1, 2);
     // going on active mode
@@ -84,17 +101,19 @@ int main(void) {
     
     
     while(1)
-    {/*
-        x_lsb = spi_write(0x42, 0x00, x_msb);
-        print(x_lsb);
-        print(x_msb);
+    {
+        LATDbits.LATD6 = 0;
+        x_lsb = spi_write(0x42 | 0x80, 0x00, &x_msb);
+        LATDbits.LATD6 = 1;
+        // print(x_lsb);
+        // print(x_msb);
         x_lsb = x_lsb & 0xF8; // 
         // x_msb << 8; // msb shifted of 8 of left
         x_msb = (x_msb << 8) | x_lsb; // the union of lsb and msb shifted
         x_msb = x_msb / 8; // divide the value by 8
         printImu (x_msb);
-        tmr_wait_period (TIMER2);
-     */
+        while(!tmr_wait_period (TIMER2));
+     
     }
     return 0;
 }
@@ -125,28 +144,27 @@ void print(int stamp)
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
         U1TXREG = buff [i];
     }
-    while (U1STAbits.UTXBF != 0); // ask if we can use this register
-    U1TXREG = ' ';
 }
 
 void printImu(int stamp)
 {
     char buff[20];
     char str[] = "$MAGX=";
-    char result [40];
-    sprintf(buff,"%d", stamp);
+    sprintf(buff,"%d", stamp); 
     
-    // copy "$MAG" at the beginning of result
-    strcpy(result, str);
-    // copy the value string after "$MAG" in result
-    strcat(result, buff);
-    for (int i = 0; result[i] != 0; i++)
+    for(int i =0; str[i] != 0; i++)
     {
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buff [i];
+        U1TXREG = str[i];
+
     }
-    while (U1STAbits.UTXBF != 0); // ask if we can use this register
-    U1TXREG = ' ';
+    for (int i = 0; buff[i] != 0; i++)
+    {
+        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        U1TXREG = buff[i];
+    }
+    while (U1STAbits.UTXBF != 0); 
+    U1TXREG = '*';
 }
 
 
