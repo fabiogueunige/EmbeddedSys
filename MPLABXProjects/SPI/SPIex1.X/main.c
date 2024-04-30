@@ -12,6 +12,7 @@
 #include <string.h>
 #include <stdio.h>
 
+int spW (unsigned int addr);
 void print(int);
 void printImu(int);
 int spi_write (unsigned int, int , int*);
@@ -28,6 +29,7 @@ int main(void) {
     SPI1CON1bits.PPRE =  6;// setting the primary prescaler
     SPI1CON1bits.SPRE = 0; // setting the secodary prescaler
     SPI1STATbits.SPIEN = 1; // enable the SPI 
+    // SPI1CON1bits.CKP = 1; // Specify the idle value of the clock
     
     // Remapping of the magnetometer
     TRISAbits.TRISA1 = 1; // input
@@ -103,19 +105,34 @@ Senza queste istruzioni, il dispositivo SPI potrebbe non ricevere correttamente 
     while(1)
     {
         LATDbits.LATD6 = 0;
-        x_lsb = spi_write(0x42 | 0x80, 0x00, &x_msb);
+        // x_lsb = spi_write(0x42 | 0x80, 0x00, &x_msb);
+        spW(0x42 | 0x80);
+        x_lsb = spW(0x47 | 0x80);
+        x_msb = spW(0x00);
         LATDbits.LATD6 = 1;
         // print(x_lsb);
+        print(x_msb);
+        x_lsb = x_lsb & 0xF8; //  
+        x_msb = (x_msb << 8); // msb shifted of 8 of left
         // print(x_msb);
-        x_lsb = x_lsb & 0xF8; // 
-        // x_msb << 8; // msb shifted of 8 of left
-        x_msb = (x_msb << 8) | x_lsb; // the union of lsb and msb shifted
+        x_msb = x_msb | x_lsb; // the union of lsb and msb shifted
         x_msb = x_msb / 8; // divide the value by 8
-        printImu (x_msb);
+        //printImu (x_msb);
         while(!tmr_wait_period (TIMER2));
-     
     }
     return 0;
+}
+
+int spW (unsigned int addr)
+{
+    int data;
+    while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
+    SPI1BUF = addr;
+    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd
+    data = SPI1BUF;
+    // U1TXREG = data;
+    
+    return data;
 }
 
 int spi_write (unsigned int addr, int value, int *trash_next)
@@ -137,8 +154,11 @@ int spi_write (unsigned int addr, int value, int *trash_next)
 
 void print(int stamp)
 {
+    int size;
     char buff[20];
-    sprintf(buff,"%d", stamp);
+    size = sprintf(buff,"%d", stamp);
+    while (U1STAbits.UTXBF != 0); // ask if we can use this register
+    U1TXREG = size;
     for (int i = 0; buff[i] != 0; i++)
     {
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
