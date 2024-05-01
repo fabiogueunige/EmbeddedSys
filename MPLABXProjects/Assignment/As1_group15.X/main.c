@@ -18,11 +18,15 @@
 void myfunction(int ,int ); // function that use 7 ms to be completed
 int spi_write (unsigned int, int , int*); // SPI writing function
 void print(int); // printing 
-void printImu(int);
+void printGrad(int); // printing 
+void printImu(int, int, int );
+int magnAcquisition (int , int , int , int ); // function to acquire x,y,x data from magnetometer
+void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void);
 
 // global variables
 int count = 0;
-int x[5], y[5], z[5]; // value to save to compute the mean
+int x[CNTSTOP], y[CNTSTOP], z[CNTSTOP]; // value to save to compute the mean
+
 
 
 int main(void) {
@@ -72,10 +76,8 @@ int main(void) {
     // Magnetometer activation
     // variable definition
     int trash = 0;
-    int x_mean = 0, y_mean = 0, z_mean = 0;
-    int chip_val = 0; // value of the chip selector
-    int lsb = 0, msb = 0;
-    
+    int xtmp = 0, ytmp = 0, ztmp = 0;
+
     // Going on sleep mode and waiting before to go on active (needed for SPI)
     LATDbits.LATD6 = 0; // To advise we are sending data
     spi_write(0x4B, 0x01, &trash);
@@ -87,81 +89,60 @@ int main(void) {
     spi_write(0x4C , 0b00110, &trash); // chiedere
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
-    
-    /* Not useful next time give the 25Hz
-    // Changing the data rate
-    LATDbits.LATD6 = 0;
-    chip_val = spi_write(0x40 | 0x80, 0x00, &trash);  
-    LATDbits.LATD6 = 1;
-    print(chip_val);
-     * */
-    
+        
     // timer setup
-    // timer 1 used for the function
-    tmr_setup_period (TIMER2, 10);
-    // timer 3 for the supsension
+    tmr_setup_period (TIMER1, 200); // timer 1 interrpt for UART
+    tmr_setup_period (TIMER2, 10); // for main
+    // timer 3 for the supsension // to go in active mode
     tmr_setup_period (TIMER4, 40); // timer to read from magnetometer
+    // timer 5 used for the function
+    
+    // Setting of the interrupt
+    IFS0bits.T1IF = 0;
+    IEC0bits.T1IE = 1;
+    
+    IFS1bits.T4IF = 1; // to have the read of the magnetometer at the first cycle
     
     while(1)
     {
-        myfunction(TIMER1, 7);
+        myfunction(TIMER5, 7);
         
-        /*if (cont == 5)
-        {
-            x_mean = 
-        }*/
         if (IFS1bits.T4IF == 1) // read the magnetometer
         {
+            IFS1bits.T4IF = 0; // resetting the tmer flag
+            
             count ++;
+            // disablle the interrupts while acquiring data from spi
+            IEC0bits.T1IE = 0;
             // acquiring x values from the magnetometer
-            IFS1bits.T4IF = 0;
             LATDbits.LATD6 = 0;
-            lsb = spi_write(0x42 | 0x80, 0x00, &msb);
+            x[count] = magnAcquisition(0x42, 0x00, 0x80, 0xF8);
             LATDbits.LATD6 = 1;
-            while (!tmr_wait_period(TIMER2));
-            lsb = lsb & 0xF8; //  
-            msb = (msb << 8); // msb shifted of 8 of left
-            // print(x_msb);
-            msb = msb | lsb; // the union of lsb and msb shifted
-            msb = msb / 8; // divide the value by 8
-            // printImu (msb);
-            x[count] = msb;
-
+            
             // acquiring y values from the magnetometer
             LATDbits.LATD6 = 0;
-            lsb = spi_write(0x44 | 0x80, 0x00, &msb);
+            y[count] = magnAcquisition(0x44, 0x00, 0x80, 0xF8);
             LATDbits.LATD6 = 1;
-            while (!tmr_wait_period(TIMER2));
-            lsb = lsb & 0xF8; //  
-            msb = (msb << 8); // msb shifted of 8 of left
-            // print(x_msb);
-            msb = msb | lsb; // the union of lsb and msb shifted
-            msb = msb / 8; // divide the value by 8
-            // printImu (msb);
-            y[count] = msb;
-
+            
             // acquiring z values from the magnetometer
-            LATDbits.LATD6 = 0;
-            lsb = spi_write(0x46 | 0x80, 0x00, &msb);
+            LATDbits.LATD6 = 0; 
+            z[count] = magnAcquisition(0x46, 0x00, 0x80, 0xFE);
             LATDbits.LATD6 = 1;
-            while (!tmr_wait_period(TIMER2));
-            lsb = lsb & 0xFE; //  
-            msb = (msb << 8); // msb shifted of 8 of left
-            // print(x_msb);
-            msb = msb | lsb; // the union of lsb and msb shifted
-            msb = msb / 8; // divide the value by 8
-            // printImu (msb);
-            z[count] = msb;
+            
+            
+            // Modifing the sum of the axis
+            /*
+            x[count] = xtmp;
+            y[count] = ytmp;
+            z[count] = ztmp;*/
+            IEC0bits.T1IE = 1;
+            
+            // printImu(x[count], y[count], z[count]);
         }
-        if (count >= 5)
+        if (count >= CNTSTOP)
         {
-            count  = 0;
-            x_mean /= 5;
-            y_mean /= 5;
-            z_mean /= 5;
-        }
-        // acquiring x values from the magnetometer
-        
+            count  = 0;            
+        }        
     }
     return 0;
 }
@@ -198,23 +179,79 @@ void print(int stamp)
     }
 }
 
-void printImu(int stamp)
+void printImu(int x, int y, int z)
 {
-    char buff[20];
-    char str[] = "$MAGX=";
-    sprintf(buff,"%d", stamp); 
-    
-    for(int i =0; str[i] != 0; i++)
-    {
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = str[i];
+    char buff[100];
 
-    }
-    for (int i = 0; buff[i] != 0; i++)
+    sprintf(buff,"$MAG,%d,%d,%d*", x, y, z); 
+    
+    for(int i =0; buff[i] != 0; i++)
     {
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
         U1TXREG = buff[i];
     }
+}
+
+int magnAcquisition (int addr, int next_addr, int mask_ad, int mask_lsb)
+{
+    int msb = 0, lsb = 0, full = 0;
+    lsb = spi_write(addr | mask_ad, next_addr, &msb);
+    /*while (U1STAbits.UTXBF != 0); 
+    U1TXREG = 'M';
+    print(msb);
     while (U1STAbits.UTXBF != 0); 
     U1TXREG = '*';
+    
+    while (U1STAbits.UTXBF != 0); 
+    U1TXREG = 'L';
+    print(lsb);*/
+    lsb = lsb & mask_lsb; //  mask for lsb to cancel the bits
+    
+    /*while (U1STAbits.UTXBF != 0); 
+    U1TXREG = '*';*/
+    
+    msb = (msb << 8); // msb shifted of 8 of left
+    
+    full = msb | lsb; // the union of lsb and msb shifted
+    full = full / 8; // divide the value by 8
+    /*while (U1STAbits.UTXBF != 0); 
+    U1TXREG = 'F';
+    print(full);
+    while (U1STAbits.UTXBF != 0); 
+    U1TXREG = '*';*/
+    return full;
+}
+
+void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void)
+{
+    IFS0bits.T1IF = 0;
+    int xavg = 0, yavg = 0, zavg = 0;
+    int grad = 0;
+    
+    for (int i = 0; i < CNTSTOP; i++)
+    {
+        xavg += x[count];
+        yavg += y[count];
+        zavg += z[count];
+    }
+    
+    xavg /= CNTSTOP;
+    yavg /= CNTSTOP;
+    zavg /= CNTSTOP;
+    grad = atan2 (yavg, xavg);
+    printImu(xavg, yavg, zavg);
+    printGrad(grad);
+}
+
+void printGrad(int value)
+{
+    char buffer[100];
+
+    sprintf(buffer,"$YAW,%d*", value); 
+    
+    for(int i =0; buffer[i] != 0; i++)
+    {
+        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        U1TXREG = buffer[i];
+    }
 }
