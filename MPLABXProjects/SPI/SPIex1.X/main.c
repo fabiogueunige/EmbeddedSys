@@ -28,6 +28,7 @@ int main(void) {
     SPI1CON1bits.MODE16 = 0; // 8 bit mode
     SPI1CON1bits.PPRE =  6;// setting the primary prescaler
     SPI1CON1bits.SPRE = 0; // setting the secodary prescaler
+    SPI1CON1bits.CKP = 1; // complete!!!!!!
     SPI1STATbits.SPIEN = 1; // enable the SPI 
     // SPI1CON1bits.CKP = 1; // Specify the idle value of the clock
     
@@ -111,13 +112,13 @@ Senza queste istruzioni, il dispositivo SPI potrebbe non ricevere correttamente 
         x_msb = spW(0x00);
         LATDbits.LATD6 = 1;
         // print(x_lsb);
-        print(x_msb);
+        // print(x_msb);
         x_lsb = x_lsb & 0xF8; //  
         x_msb = (x_msb << 8); // msb shifted of 8 of left
         // print(x_msb);
         x_msb = x_msb | x_lsb; // the union of lsb and msb shifted
         x_msb = x_msb / 8; // divide the value by 8
-        //printImu (x_msb);
+        printImu (x_msb);
         while(!tmr_wait_period (TIMER2));
     }
     return 0;

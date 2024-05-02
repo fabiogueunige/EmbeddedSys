@@ -13,19 +13,41 @@
 
 
 #define URTBR 468 // uart baud rate
-#define CNTSTOP 5 // counter 
+#define DIMSPI 5 // counter 
+#define MAGFREQ 4
+#define UARTFREQ 20
+#define DIMUB 60
 
 void myfunction(int ,int ); // function that use 7 ms to be completed
-int spi_write (unsigned int, int , int*); // SPI writing function
+int spi_write (unsigned int addr); // SPI writing function
 void print(int); // printing 
 void printGrad(int); // printing 
 void printImu(int, int, int );
-int magnAcquisition (int , int , int , int ); // function to acquire x,y,x data from magnetometer
-void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void);
+int magnAcquisition (int , int , int); // function to acquire x,y,x data from magnetometer
+void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void);
 
-// global variables
-int count = 0;
-int x[CNTSTOP], y[CNTSTOP], z[CNTSTOP]; // value to save to compute the mean
+/*
+int spw (unsigned int addr, int value)
+{
+    int data; // the value to return to the function
+    while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
+    SPI1BUF = addr; // send the address of the device
+    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd (becouse space fo only a char)
+    data = SPI1BUF; // the byte sent from the slave
+    while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
+    SPI1BUF = value;
+    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd
+    data = SPI1BUF;
+    // U1TXREG = data;
+    
+    return data;
+}*/
+// global variables (indixes)
+int cnt = 0;
+int ind_uart = 0, ind_spi = 0, ind_tr = 0, ind_buf = 0;
+int x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
+int xavg = 0, yavg = 0, zavg = 0;
+char UBuffer[DIMUB];
 
 
 
@@ -40,7 +62,9 @@ int main(void) {
     SPI1CON1bits.MODE16 = 0; // 8 bit mode
     SPI1CON1bits.PPRE =  0;// setting the primary prescaler (pg 342)
     SPI1CON1bits.SPRE = 5; // setting the secondary prescaler
+    SPI1CON1bits.CKP = 1; // complete!!!!!!
     SPI1STATbits.SPIEN = 1; // enable the SPI 
+    
     
     // Remap for SPI (Magnetometer)
     // Setting the input/output ode
@@ -74,75 +98,84 @@ int main(void) {
     U1STAbits.UTXEN = 1; // UART transmission enable
     
     // Magnetometer activation
-    // variable definition
-    int trash = 0;
-    int xtmp = 0, ytmp = 0, ztmp = 0;
-
     // Going on sleep mode and waiting before to go on active (needed for SPI)
     LATDbits.LATD6 = 0; // To advise we are sending data
-    spi_write(0x4B, 0x01, &trash);
+    // spw(0x4B, 0x01);
+    spi_write(0x4B);
+    spi_write(0x01);
     LATDbits.LATD6 = 1; // To alert the end of the communication
     tmr_wait_ms (TIMER3, 2);
     
     // Going on active mode changing the magnetometer output data rate
     LATDbits.LATD6 = 0;
-    spi_write(0x4C , 0b00110, &trash); // chiedere
+    // spw(0x4C, 0b00110000);
+    spi_write(0x4C);
+    spi_write(0b00110000);
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
         
     // timer setup
-    tmr_setup_period (TIMER1, 200); // timer 1 interrpt for UART
     tmr_setup_period (TIMER2, 10); // for main
     // timer 3 for the supsension // to go in active mode
-    tmr_setup_period (TIMER4, 40); // timer to read from magnetometer
-    // timer 5 used for the function
+    // timer 5 used for the function of 7 ms
     
     // Setting of the interrupt
-    IFS0bits.T1IF = 0;
-    IEC0bits.T1IE = 1;
+    IFS0bits.U1TXIF = 0; // resetting UTX interrupt flag
+    IEC0bits.U1TXIE = 0; // enabling UTX interrupt 
+   
     
-    IFS1bits.T4IF = 1; // to have the read of the magnetometer at the first cycle
+    LATDbits.LATD6 = 0;
+    spi_write(0x42 | 0x80); // So next time we will read the lsb of x magnetometer
+    LATDbits.LATD6 = 1;
     
     while(1)
     {
+        
         myfunction(TIMER5, 7);
         
-        if (IFS1bits.T4IF == 1) // read the magnetometer
+        if (cnt % MAGFREQ == 0) // read the magnetometer
         {
-            IFS1bits.T4IF = 0; // resetting the tmer flag
             
-            count ++;
             // disablle the interrupts while acquiring data from spi
-            IEC0bits.T1IE = 0;
+            
             // acquiring x values from the magnetometer
-            LATDbits.LATD6 = 0;
-            x[count] = magnAcquisition(0x42, 0x00, 0x80, 0xF8);
-            LATDbits.LATD6 = 1;
-            
+            x[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8);
+                       
             // acquiring y values from the magnetometer
-            LATDbits.LATD6 = 0;
-            y[count] = magnAcquisition(0x44, 0x00, 0x80, 0xF8);
-            LATDbits.LATD6 = 1;
-            
+            y[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8);
+ 
             // acquiring z values from the magnetometer
-            LATDbits.LATD6 = 0; 
-            z[count] = magnAcquisition(0x46, 0x00, 0x80, 0xFE);
-            LATDbits.LATD6 = 1;
+            z[ind_spi] = magnAcquisition(0x00, 0x42 | 0x80, 0xFE);
             
+            // control on spi index of the circular buffer
+            if (ind_spi >= DIMSPI)
+            {
+                ind_spi = 0;
+            }
+            else {
+                ind_spi++;
+            }
+                     
             
-            // Modifing the sum of the axis
-            /*
-            x[count] = xtmp;
-            y[count] = ytmp;
-            z[count] = ztmp;*/
-            IEC0bits.T1IE = 1;
-            
-            // printImu(x[count], y[count], z[count]);
         }
-        if (count >= CNTSTOP)
+        if ((cnt % UARTFREQ == 0) && (cnt != 0))
         {
-            count  = 0;            
-        }        
+            cnt = 0;
+            for (int i = 0; i < DIMSPI; i++)
+            {
+                xavg += x[i];
+                yavg += y[i];
+                zavg += z[i];
+            }
+            xavg /= DIMSPI;
+            yavg /= DIMSPI;
+            zavg /= DIMSPI;
+            printImu(xavg, yavg, zavg);
+            
+            // implement print on circular buffer
+        }
+        cnt ++;
+        while(!tmr_wait_period(TIMER2));
     }
     return 0;
 }
@@ -153,49 +186,50 @@ void myfunction(int tmr, int tiempo)
     tmr_wait_ms(tmr, tiempo);
 }
 
-int spi_write (unsigned int addr, int value, int *trash_next)
+int spi_write (unsigned int addr)
 {
     int data; // the value to return to the function
     while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
     SPI1BUF = addr; // send the address of the device
     while(SPI1STATbits.SPIRBF == 0); // wait until data has arrived
-    *trash_next = SPI1BUF; // the byte sent from the slave of the previous request
-    while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
-    SPI1BUF = value; // writing a value or giving the address
-    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrived
-    data = SPI1BUF; // taking the information from the slave of the SPI
-    
+    data = SPI1BUF; // the byte sent from the slave of the previous request
+        
     return data;
-}
-
-void print(int stamp)
-{
-    char buff[20];
-    sprintf(buff,"%d", stamp);
-    for (int i = 0; buff[i] != 0; i++)
-    {
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buff [i];
-    }
 }
 
 void printImu(int x, int y, int z)
 {
-    char buff[100];
+    char buff[30];
 
     sprintf(buff,"$MAG,%d,%d,%d*", x, y, z); 
     
     for(int i =0; buff[i] != 0; i++)
     {
+        UBuffer[ind_buf] = buff[i];
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
         U1TXREG = buff[i];
+        
+        if (ind_buf >= DIMUB)
+        {
+            ind_buf++;
+        }
+        else
+        {
+            ind_buf = 0;
+        }    
     }
+
 }
 
-int magnAcquisition (int addr, int next_addr, int mask_ad, int mask_lsb)
+int magnAcquisition (int addr, int next_addr, int mask_lsb)
 {
     int msb = 0, lsb = 0, full = 0;
-    lsb = spi_write(addr | mask_ad, next_addr, &msb);
+    LATDbits.LATD6 = 0;
+    lsb = spi_write(addr);
+    // LATDbits.LATD6 = 1;
+    // LATDbits.LATD6 = 0;
+    msb = spi_write(next_addr);
+    LATDbits.LATD6 = 1;
     /*while (U1STAbits.UTXBF != 0); 
     U1TXREG = 'M';
     print(msb);
@@ -206,9 +240,10 @@ int magnAcquisition (int addr, int next_addr, int mask_ad, int mask_lsb)
     U1TXREG = 'L';
     print(lsb);*/
     lsb = lsb & mask_lsb; //  mask for lsb to cancel the bits
-    
-    /*while (U1STAbits.UTXBF != 0); 
-    U1TXREG = '*';*/
+    /*
+    while (U1STAbits.UTXBF != 0); 
+    U1TXREG = '*';
+     * */
     
     msb = (msb << 8); // msb shifted of 8 of left
     
@@ -222,36 +257,44 @@ int magnAcquisition (int addr, int next_addr, int mask_ad, int mask_lsb)
     return full;
 }
 
-void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void)
+void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {
-    IFS0bits.T1IF = 0;
-    int xavg = 0, yavg = 0, zavg = 0;
-    int grad = 0;
     
-    for (int i = 0; i < CNTSTOP; i++)
-    {
-        xavg += x[count];
-        yavg += y[count];
-        zavg += z[count];
-    }
-    
-    xavg /= CNTSTOP;
-    yavg /= CNTSTOP;
-    zavg /= CNTSTOP;
+    /*
     grad = atan2 (yavg, xavg);
     printImu(xavg, yavg, zavg);
-    printGrad(grad);
+    printGrad(grad);*/
 }
 
 void printGrad(int value)
 {
-    char buffer[100];
+    char buff[15];
 
-    sprintf(buffer,"$YAW,%d*", value); 
+    sprintf(buff,"$YAW,%d*", value); 
     
-    for(int i =0; buffer[i] != 0; i++)
+    for(int i =0; buff[i] != 0; i++)
+    {
+        UBuffer[ind_buf] = buff[i];
+        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        U1TXREG = buff[i];
+        if (ind_buf >= DIMUB)
+        {
+            ind_buf++;
+        }
+        else
+        {
+            ind_buf = 0;
+        }    
+    }
+}
+
+void print(int stamp)
+{
+    char buff[20];
+    sprintf(buff,"%d", stamp);
+    for (int i = 0; buff[i] != 0; i++)
     {
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buffer[i];
+        U1TXREG = buff [i];
     }
 }
