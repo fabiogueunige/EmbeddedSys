@@ -44,11 +44,10 @@ int spw (unsigned int addr, int value)
 }*/
 // global variables (indixes)
 int cnt = 0;
-int ind_uart = 0, ind_spi = 0, ind_tr = 0, ind_buf = 0;
+int ind_uart = 0, ind_spi = 0, ind_tr = 0, ind_buf_write = 0, ind_buf_read = 0;
 int x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
 int xavg = 0, yavg = 0, zavg = 0;
 char UBuffer[DIMUB];
-
 
 
 int main(void) {
@@ -120,8 +119,8 @@ int main(void) {
     // timer 5 used for the function of 7 ms
     
     // Setting of the interrupt
-    IFS0bits.U1TXIF = 0; // resetting UTX interrupt flag
-    IEC0bits.U1TXIE = 0; // enabling UTX interrupt 
+    IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
+    IEC0bits.U1TXIE = 1; // enabling U1TX interrupt 
    
     
     LATDbits.LATD6 = 0;
@@ -136,7 +135,7 @@ int main(void) {
         if (cnt % MAGFREQ == 0) // read the magnetometer
         {
             
-            // disablle the interrupts while acquiring data from spi
+            // disable the interrupts while acquiring data from spi
             
             // acquiring x values from the magnetometer
             x[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8);
@@ -203,22 +202,27 @@ void printImu(int x, int y, int z)
 
     sprintf(buff,"$MAG,%d,%d,%d*", x, y, z); 
     
-    for(int i =0; buff[i] != 0; i++)
+    // copy the men value comes from spi inside the circular buffer
+    for(int i = 0; buff[i] != 0; i++)
     {
-        UBuffer[ind_buf] = buff[i];
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buff[i];
+        UBuffer[ind_buf_write] = buff[i];
+        //while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        //U1TXREG = buff[i];
         
-        if (ind_buf >= DIMUB)
+        // every char write in the buffer augment the index
+        if (ind_buf_write >= DIMUB)
         {
-            ind_buf++;
+            ind_buf_write ++;
         }
         else
         {
-            ind_buf = 0;
+            ind_buf_write = 0;
         }    
+    }   
+    // send the value trough UART  
+    if (U1STAbits.UTXBF == 0){
+        IFS0bits.U1TXIF = 1;   
     }
-
 }
 
 int magnAcquisition (int addr, int next_addr, int mask_lsb)
@@ -258,7 +262,24 @@ int magnAcquisition (int addr, int next_addr, int mask_lsb)
 }
 
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
-{
+{   
+     //set the flag to zero
+    IFS0bits.U1TXIF = 0;
+    for (int i = 0; UBuffer[i] != 0; i++)
+    {
+        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+        U1TXREG = UBuffer[ind_buf_read];
+        // 
+        if (ind_buf_read >= DIMUB)
+        {
+            ind_buf_read ++;
+        }
+        else
+        {
+            ind_buf_read = 0;
+        }    
+    }
+    
     
     /*
     grad = atan2 (yavg, xavg);
@@ -274,16 +295,16 @@ void printGrad(int value)
     
     for(int i =0; buff[i] != 0; i++)
     {
-        UBuffer[ind_buf] = buff[i];
+        UBuffer[ind_buf_write] = buff[i];
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
         U1TXREG = buff[i];
-        if (ind_buf >= DIMUB)
+        if (ind_buf_write >= DIMUB)
         {
-            ind_buf++;
+            ind_buf_write ++;
         }
         else
         {
-            ind_buf = 0;
+            ind_buf_write = 0;
         }    
     }
 }
