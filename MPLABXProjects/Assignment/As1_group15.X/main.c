@@ -44,7 +44,8 @@ int spw (unsigned int addr, int value)
 }*/
 // global variables (indixes)
 int cnt = 0;
-int ind_uart = 0, ind_spi = 0, ind_tr = 0, ind_buf_write = 0, ind_buf_read = 0;
+int ind_spi = 0, ind_buf_write = 0, ind_buf_read = 0;
+int reach_max = 0;
 int x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
 int xavg = 0, yavg = 0, zavg = 0;
 char UBuffer[DIMUB];
@@ -95,11 +96,14 @@ int main(void) {
     
     // Enabling the transmission
     U1STAbits.UTXEN = 1; // UART transmission enable
+    // Setting of the interrupt
+    IFS0bits.U1TXIF = 1; // resetting U1TX interrupt flag
+    IEC0bits.U1TXIE = 0; // enabling U1TX interrupt 
     
     // Magnetometer activation
     // Going on sleep mode and waiting before to go on active (needed for SPI)
     LATDbits.LATD6 = 0; // To advise we are sending data
-    // spw(0x4B, 0x01);
+    //spw(0x4B, 0x01);
     spi_write(0x4B);
     spi_write(0x01);
     LATDbits.LATD6 = 1; // To alert the end of the communication
@@ -107,7 +111,7 @@ int main(void) {
     
     // Going on active mode changing the magnetometer output data rate
     LATDbits.LATD6 = 0;
-    // spw(0x4C, 0b00110000);
+    //spw(0x4C, 0b00110000);
     spi_write(0x4C);
     spi_write(0b00110000);
     LATDbits.LATD6 = 1;
@@ -117,10 +121,6 @@ int main(void) {
     tmr_setup_period (TIMER2, 10); // for main
     // timer 3 for the supsension // to go in active mode
     // timer 5 used for the function of 7 ms
-    
-    // Setting of the interrupt
-    IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
-    IEC0bits.U1TXIE = 1; // enabling U1TX interrupt 
    
     
     LATDbits.LATD6 = 0;
@@ -170,6 +170,7 @@ int main(void) {
             yavg /= DIMSPI;
             zavg /= DIMSPI;
             printImu(xavg, yavg, zavg);
+            //printImu(x[ind_spi], y[ind_spi], z[ind_spi]);
             
             // implement print on circular buffer
         }
@@ -212,16 +213,19 @@ void printImu(int x, int y, int z)
         // every char write in the buffer augment the index
         if (ind_buf_write >= DIMUB)
         {
-            ind_buf_write ++;
-        }
-        else
-        {
             ind_buf_write = 0;
+            reach_max = 1;
+            
+        }
+        else 
+        {
+            ind_buf_write++;
         }    
     }   
     // send the value trough UART  
     if (U1STAbits.UTXBF == 0){
-        IFS0bits.U1TXIF = 1;   
+        IFS0bits.U1TXIF = 1; 
+        IEC0bits.U1TXIE = 1;
     }
 }
 
@@ -265,20 +269,31 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {   
      //set the flag to zero
     IFS0bits.U1TXIF = 0;
-    for (int i = 0; UBuffer[i] != 0; i++)
-    {
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
+    
+    if (UBuffer[ind_buf_read] != '\0'){
+        
         U1TXREG = UBuffer[ind_buf_read];
-        // 
+        
         if (ind_buf_read >= DIMUB)
         {
-            ind_buf_read ++;
-        }
-        else
-        {
             ind_buf_read = 0;
-        }    
+            reach_max = 0;
+        }
+        else if (ind_buf_read < DIMUB ) //&& ind_buf_read < ind_buf_write && reach_max == 0
+        {
+            ind_buf_read++;
+        }
+        //else if (ind_buf_read < DIMUB && ind_buf_read >= ind_buf_write && reach_max == 1)
+        //{
+        //    ind_buf_read++;
+        //}
+        
     }
+    else{
+        IEC0bits.U1TXIE = 0;
+    }
+    
+    //U1TXREG = UBuffer[ind_buf_read];
     
     
     /*
