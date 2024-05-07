@@ -22,7 +22,7 @@ int main(void) {
     
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
     
-    // INTCON2bits.GIE = 1; // set global interrupt enable 
+    INTCON2bits.GIE = 1; // set global interrupt enable 
     // SPI configuration
     SPI1CON1bits.MSTEN = 1; // master mode 
     SPI1CON1bits.MODE16 = 0; // 8 bit mode
@@ -61,15 +61,10 @@ int main(void) {
     int x_msb = 0; // most significant
     
     TRISBbits.TRISB3 = 0; 
-
     TRISBbits.TRISB4 = 0;
-
-    TRISDbits.TRISD6 = 0; // set as output for the magnometer
-
+    TRISDbits.TRISD6 = 0; // set as output for the magnetometer
     LATBbits.LATB3 = 1; 
-
     LATBbits.LATB4 = 1; 
-
     LATDbits.LATD6 = 1;
     //PORTDbits.RD6 = 0; ERROR is to read
     
@@ -88,7 +83,7 @@ Senza queste istruzioni, il dispositivo SPI potrebbe non ricevere correttamente 
     tmr_wait_ms (TIMER1, 2);
     // going on active mode
     LATDbits.LATD6 = 0;
-    chip_val = spi_write(0x4C , 0x00, bau);
+    chip_val = spi_write(0x4C , 0b00110000, bau);
     LATDbits.LATD6 = 1;
         
     // stamp the address of the chip selector
