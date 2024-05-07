@@ -9,6 +9,7 @@
 #include "xc.h"
 #include <math.h>
 #include "timer.h"
+#include "functiones.h"
 #include <stdio.h>
 
 
@@ -16,7 +17,7 @@
 #define DIMSPI 5 // counter 
 #define MAGFREQ 4
 #define UARTFREQ 20
-#define DIMUB 60
+#define DIMUB 100
 
 void myfunction(int ,int ); // function that use 7 ms to be completed
 int spi_write (unsigned int addr); // SPI writing function
@@ -26,22 +27,7 @@ void printImu(int, int, int );
 int magnAcquisition (int , int , int); // function to acquire x,y,x data from magnetometer
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void);
 
-/*
-int spw (unsigned int addr, int value)
-{
-    int data; // the value to return to the function
-    while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
-    SPI1BUF = addr; // send the address of the device
-    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd (becouse space fo only a char)
-    data = SPI1BUF; // the byte sent from the slave
-    while (SPI1STATbits.SPITBF == 1); // wait until tx buffer is not full
-    SPI1BUF = value;
-    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrievd
-    data = SPI1BUF;
-    // U1TXREG = data;
-    
-    return data;
-}*/
+
 // global variables (indixes)
 int cnt = 0;
 int ind_spi = 0, ind_buf_write = 0, ind_buf_read = 0;
@@ -88,6 +74,8 @@ int main(void) {
     // UART Setting configuration
     // U1BRG = round((FCY /(16LL * BAUD_RATE))-1); 
     U1BRG = URTBR; // setting the baud rate register directly in integer to avoid floating value
+    U1STAbits.UTXISEL0 = 0;
+    U1STAbits.UTXISEL1 = 0;
     U1MODEbits.UARTEN = 1; // enable UART
     
     // Pin remap
@@ -102,31 +90,26 @@ int main(void) {
     
     // Magnetometer activation
     // Going on sleep mode and waiting before to go on active (needed for SPI)
-    LATDbits.LATD6 = 0; // To advise we are sending data
-    //spw(0x4B, 0x01);
     spi_write(0x4B);
     spi_write(0x01);
-    LATDbits.LATD6 = 1; // To alert the end of the communication
     tmr_wait_ms (TIMER3, 2);
     
     // Going on active mode changing the magnetometer output data rate
-    LATDbits.LATD6 = 0;
-    //spw(0x4C, 0b00110000);
     spi_write(0x4C);
     spi_write(0b00110000);
-    LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
         
     // timer setup
     tmr_setup_period (TIMER2, 10); // for main
     // timer 3 for the supsension // to go in active mode
     // timer 5 used for the function of 7 ms
-   
+    int chip_val = 0;
+    spi_write(0x40 | 0x80);
+    chip_val = spi_write(0x00);
+    print(chip_val);   
     
-    LATDbits.LATD6 = 0;
-    spi_write(0x42 | 0x80); // So next time we will read the lsb of x magnetometer
-    LATDbits.LATD6 = 1;
-    
+    IEC0bits.U1TXIE = 1; // activate the interrupt for the uart trasmission
+        
     while(1)
     {
         
@@ -134,9 +117,7 @@ int main(void) {
         
         if (cnt % MAGFREQ == 0) // read the magnetometer
         {
-            
-            // disable the interrupts while acquiring data from spi
-            
+            spi_write(0x42 | 0x80); // So next time we will read the lsb of x magnetometer
             // acquiring x values from the magnetometer
             x[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8);
                        
@@ -144,7 +125,7 @@ int main(void) {
             y[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8);
  
             // acquiring z values from the magnetometer
-            z[ind_spi] = magnAcquisition(0x00, 0x42 | 0x80, 0xFE);
+            z[ind_spi] = magnAcquisition(0x00, 0x00, 0xFE);
             
             // control on spi index of the circular buffer
             if (ind_spi >= DIMSPI)
@@ -154,9 +135,8 @@ int main(void) {
             else {
                 ind_spi++;
             }
-                     
-            
         }
+        
         if ((cnt % UARTFREQ == 0) && (cnt != 0))
         {
             cnt = 0;
@@ -188,12 +168,14 @@ void myfunction(int tmr, int tiempo)
 
 int spi_write (unsigned int addr)
 {
+    LATDbits.LATD6 = 0; // To advise we are sending data
     int data; // the value to return to the function
     while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
     SPI1BUF = addr; // send the address of the device
     while(SPI1STATbits.SPIRBF == 0); // wait until data has arrived
     data = SPI1BUF; // the byte sent from the slave of the previous request
-        
+    LATDbits.LATD6 = 1; // To alert the end of the communication    
+    
     return data;
 }
 
@@ -207,15 +189,12 @@ void printImu(int x, int y, int z)
     for(int i = 0; buff[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buff[i];
-        //while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        //U1TXREG = buff[i];
         
         // every char write in the buffer augment the index
         if (ind_buf_write >= DIMUB)
         {
             ind_buf_write = 0;
             reach_max = 1;
-            
         }
         else 
         {
@@ -225,19 +204,17 @@ void printImu(int x, int y, int z)
     // send the value trough UART  
     if (U1STAbits.UTXBF == 0){
         IFS0bits.U1TXIF = 1; 
-        IEC0bits.U1TXIE = 1;
+        //IEC0bits.U1TXIE = 1;
     }
 }
 
 int magnAcquisition (int addr, int next_addr, int mask_lsb)
 {
     int msb = 0, lsb = 0, full = 0;
-    LATDbits.LATD6 = 0;
+
     lsb = spi_write(addr);
-    // LATDbits.LATD6 = 1;
-    // LATDbits.LATD6 = 0;
     msb = spi_write(next_addr);
-    LATDbits.LATD6 = 1;
+
     /*while (U1STAbits.UTXBF != 0); 
     U1TXREG = 'M';
     print(msb);
@@ -270,28 +247,30 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
      //set the flag to zero
     IFS0bits.U1TXIF = 0;
     
-    if (UBuffer[ind_buf_read] != '\0'){
-        
+    // while(U1STAbits.UTXBF != 1 && 
+    if ((ind_buf_read <= ind_buf_write && reach_max == 0) || (ind_buf_read >= ind_buf_write && reach_max == 1))
+    {
         U1TXREG = UBuffer[ind_buf_read];
         
         if (ind_buf_read >= DIMUB)
         {
             ind_buf_read = 0;
-            reach_max = 0;
+            reach_max = 0; // boolean to delete the lap advantage of writing (now same lap)
         }
-        else if (ind_buf_read < DIMUB ) //&& ind_buf_read < ind_buf_write && reach_max == 0
+        else if (ind_buf_read < DIMUB )
         {
             ind_buf_read++;
         }
-        //else if (ind_buf_read < DIMUB && ind_buf_read >= ind_buf_write && reach_max == 1)
-        //{
-        //    ind_buf_read++;
-        //}
-        
+        else if (reach_max == 0 && ind_buf_read > ind_buf_write)
+        {
+            // Error case!! Read should be smaller
+            ind_buf_read = ind_buf_write - 1;
+            // Loosing information, but managing the unexpected error
+        }
     }
-    else{
+    /*else{
         IEC0bits.U1TXIE = 0;
-    }
+    }*/
     
     //U1TXREG = UBuffer[ind_buf_read];
     
@@ -326,11 +305,11 @@ void printGrad(int value)
 
 void print(int stamp)
 {
-    char buff[20];
-    sprintf(buff,"%d", stamp);
-    for (int i = 0; buff[i] != 0; i++)
+    char buffe[20];
+    sprintf(buffe,"%d", stamp);
+    for (int i = 0; buffe[i] != 0; i++)
     {
         while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buff [i];
+        U1TXREG = buffe [i];
     }
 }
