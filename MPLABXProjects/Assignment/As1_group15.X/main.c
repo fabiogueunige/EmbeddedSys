@@ -20,10 +20,9 @@
 
 void myfunction(int ,int ); // function that use 7 ms to be completed
 int spi_write (unsigned int addr); // SPI writing function
-void print(int); // printing 
-void printGrad(int); // printing 
-void printImu(int, int, int );
-int magnAcquisition (int , int , int, int); // function to acquire x,y,x data from magnetometer
+void printGrad(float); // printing 
+void printImu(float, float, float);
+float magnAcquisition (int , int , int, int); // function to acquire x,y,x data from magnetometer
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void);
 
 
@@ -35,8 +34,8 @@ void chip_selecting();
 // global variables (indixes)
 int cnt = 0;
 int ind_spi = 0, ind_buf_write = 0, ind_buf_read = 0;
-double x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
-double xavg = 0, yavg = 0, zavg = 0;
+float x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
+float xavg = 0, yavg = 0, zavg = 0;
 char UBuffer[DIMUB];
 
 
@@ -88,7 +87,7 @@ int main(void) {
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
     
-    int grad = 0;
+    float grad = 0;
     
     // timer setup
     tmr_setup_period (TIMER2, 10); // for main
@@ -99,7 +98,6 @@ int main(void) {
     spi_write(0x40 | 0x80);
     chip_val = spi_write(0x00);
     LATDbits.LATD6 = 1;
-    print(chip_val);  
     while (U1STAbits.UTXBF != 0); 
     
     IEC0bits.U1TXIE = 1; // activate the interrupt for the uart trasmission
@@ -109,7 +107,7 @@ int main(void) {
         
         myfunction(TIMER5, 7);
         
-        if (cnt % MAGFREQ == 0) // read the magnetometer
+        if (cnt % MAGFREQ == 0) // read the magnetometer every 25Hz, 40ms
         {
             LATDbits.LATD6 = 0;
             spi_write(0x42 | 0x80); // So next time we will read the lsb of x magnetometer
@@ -144,14 +142,14 @@ int main(void) {
                 yavg += y[i];
                 zavg += z[i];
             }
-            xavg /= (double) DIMSPI;
-            yavg /= (double) DIMSPI;
-            zavg /= (double) DIMSPI;
-            printImu((int) xavg, (int) yavg, (int) zavg);
+            xavg /= DIMSPI;
+            yavg /= DIMSPI;
+            zavg /= DIMSPI;
+            printImu(xavg, yavg, zavg);
             
             // gradient computation
-            grad = atan2 ((double) yavg, (double) xavg);
-            grad = grad * 180 / M_PI;
+            grad = atan2 (xavg, yavg);
+            grad = (grad * 180.0) / M_PI;
             printGrad(grad);
             
         }
@@ -180,11 +178,11 @@ int spi_write (unsigned int addr)
     return data;
 }
 
-void printImu(int x, int y, int z)
+void printImu(float x, float y, float z)
 {
     char buff[30];
 
-    sprintf(buff,"$MAG,%d,%d,%d*", x, y, z); 
+    sprintf(buff,"$MAG,%.2f,%.2f,%.2f*", x, y, z); 
     
     // copy the men value comes from spi inside the circular buffer
     for(int i = 0; buff[i] != 0; i++)
@@ -208,7 +206,7 @@ void printImu(int x, int y, int z)
     }
 }
 
-int magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
+float magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
 {
     int msb = 0, lsb = 0, full = 0;
 
@@ -251,16 +249,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     }*/
 }
 
-void print(int stamp)
-{
-    char buffe[20];
-    sprintf(buffe,"%d", stamp);
-    for (int i = 0; buffe[i] != 0; i++)
-    {
-        while (U1STAbits.UTXBF != 0); // ask if we can use this register
-        U1TXREG = buffe [i];
-    }
-}
+
 
 void spi_config()
 {
@@ -299,11 +288,11 @@ void init_config(){
     INTCON2bits.GIE = 1; // set global interrupt enable 
 }
 
-void printGrad(int value)
+void printGrad(float value)
 {
     char buffer[15];
 
-    sprintf(buffer,"$YAW,%d*", value); 
+    sprintf(buffer,"$YAW,%.2f", value); 
     
     for(int i =0; buffer[i] != 0; i++)
     {
