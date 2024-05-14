@@ -202,7 +202,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     
     while((U1STAbits.UTXBF != 1) && (ind_buf_read != ind_buf_write))
     {
-        U1TXREG = UBuffer[ind_buf_read];
+        U1TXREG = UBuffer[ind_buf_read]; // write the value of circula buffer isndie the uart1 buffer
         
         if (ind_buf_read >= DIMUB)
         {
@@ -220,9 +220,10 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 void printGrad(float value)
 {
     char buffer[15];
-
+    // conver the float into string
     sprintf(buffer,"$YAW,%.2f", value); 
     
+    // copy the value of grad inside the circular buffer (Ubuffer)
     for(int i = 0; buffer[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buffer[i];
