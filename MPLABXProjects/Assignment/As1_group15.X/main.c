@@ -79,20 +79,20 @@ int main(void) {
     
     // Going on active mode changing the magnetometer output data rate
     LATDbits.LATD6 = 0;
-    spi_write(0x4C);
-    spi_write(0b00110000);
+    spi_write(0x4C); 
+    spi_write(0b00110000); // istruction for change the data rate at 25hz
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
         
     // timer setup
-    tmr_setup_period (TIMER2, 10); // for main
+    tmr_setup_period (TIMER2, 10); // for syncronize the main
     
     IEC0bits.U1TXIE = 1; // activate the interrupt for the uart trasmission
         
     while(1)
     {
         
-        myfunction(TIMER5, 7);
+        myfunction(TIMER5, 7); 
         
         if (cnt % MAGFREQ == 0) // read the magnetometer every 25Hz, 40ms
         {
@@ -118,19 +118,21 @@ int main(void) {
                 ind_spi++;
             }
         }
-        
+        // enter in this if every 200 ms
         if ((cnt % UARTFREQ == 0) && (cnt != 0))
         {
             cnt = 0;
+            // calulate the mean of the last 5 value acquired from magnetometer
             for (int i = 0; i < DIMSPI; i++)
             {
-                xavg += x[i];
+                xavg += x[i]; 
                 yavg += y[i];
                 zavg += z[i];
             }
             xavg /= DIMSPI;
             yavg /= DIMSPI;
             zavg /= DIMSPI;
+            // function for 
             printImu(xavg, yavg, zavg);
             
             // gradient computation
@@ -146,6 +148,8 @@ int main(void) {
     return 0;
 }
 
+// function that give as input the mean of x, y, z and put it inside the circular buffer. 
+// If the buffer of uart is empty set the uart flag to 1
 void printImu(float x, float y, float z)
 {
     char buff[30];
@@ -167,11 +171,12 @@ void printImu(float x, float y, float z)
         }    
     }   
     // to send the value trough UART trasmission
-    if (U1STAbits.UTXBF == 0){ 
-        IFS0bits.U1TXIF = 1; 
+    if (U1STAbits.UTXBF == 0){  // check if the buffer is not full
+        IFS0bits.U1TXIF = 1;  // set the flag to 1
     }
 }
 
+// function for acquiring data from magnetometer
 float magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
 {
     int msb = 0, lsb = 0, full = 0;
@@ -189,6 +194,7 @@ float magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
     return full;
 }
 
+// uart1 interrupt function 
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {   
     //set the flag to zero
@@ -210,6 +216,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     }
 }
 
+// function for put the value of the grad inside the circular buffer 
 void printGrad(float value)
 {
     char buffer[15];
@@ -228,5 +235,8 @@ void printGrad(float value)
         {
             ind_buf_write++;
         }   
+    }
+    if (U1STAbits.UTXBF == 0){  // check if the buffer is not full
+        IFS0bits.U1TXIF = 1;  // set the flag to 1
     }
 }
