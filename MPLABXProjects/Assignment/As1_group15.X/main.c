@@ -9,30 +9,24 @@
 #include "xc.h"
 #include <math.h>
 #include "timer.h"
+#include "initlib.h"
+#include "spilib.h"
+#include "uartlib.h"
 #include <stdio.h>
 
 
-#define URTBR 468 // uart baud rate
 #define DIMSPI 5 // counter for spi
 #define MAGFREQ 4 // couinter for magnetometer
 #define UARTFREQ 20 // counter for the uart
 #define DIMUB 50 // dimension of the circular buffer
 
-void myfunction(int ,int ); // function that use 7 ms to be completed
-int spi_write (unsigned int addr); // SPI writing function
+
 void printGrad(float); // printing the grad
-void printImu(float, float, float);  // print the valu 
+void printImu(float, float, float);  // print the value of the mean on the three axis 
 float magnAcquisition (int , int , int, int); // function to acquire x,y,x data from magnetometer
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void);
 
-
-void spi_config();
-void init_config();
-void tr_uart_config();
-void chip_selecting();
-
 // global variables (indixes)
-int cnt = 0;
 int ind_spi = 0, ind_buf_write = 0, ind_buf_read = 0;
 float x[DIMSPI], y[DIMSPI], z[DIMSPI]; // value to save from the magnetometer
 float xavg = 0, yavg = 0, zavg = 0;
@@ -47,6 +41,9 @@ int main(void) {
     
     chip_selecting();
 
+    // variable definition
+    int cnt = 0; // counter for...
+    float grad = 0; // 
     
     // Remap for SPI (Magnetometer)
     // Setting the input/output ode
@@ -86,19 +83,9 @@ int main(void) {
     spi_write(0b00110000);
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
-    
-    float grad = 0;
-    
+        
     // timer setup
     tmr_setup_period (TIMER2, 10); // for main
-    // timer 3 for the supsension // to go in active mode
-    // timer 5 used for the function of 7 ms
-    int chip_val = 0;
-    LATDbits.LATD6 = 0;
-    spi_write(0x40 | 0x80);
-    chip_val = spi_write(0x00);
-    LATDbits.LATD6 = 1;
-    while (U1STAbits.UTXBF != 0); 
     
     IEC0bits.U1TXIE = 1; // activate the interrupt for the uart trasmission
         
@@ -153,28 +140,10 @@ int main(void) {
             
         }
         cnt ++;
-        // check if deadline missed
+        
         while(!tmr_wait_period(TIMER2));
     }
     return 0;
-}
-
-void myfunction(int tmr, int tiempo)
-{
-    // wait 7 ms with Timer given
-    tmr_wait_ms(tmr, tiempo);
-}
-
-int spi_write (unsigned int addr)
-{
-    
-    int data; // the value to return to the function
-    while (SPI1STATbits.SPITBF == 1); // wait until the tx buffer is not full
-    SPI1BUF = addr; // send the address of the device
-    while(SPI1STATbits.SPIRBF == 0); // wait until data has arrived
-    data = SPI1BUF; // the byte sent from the slave of the previous request
-        
-    return data;
 }
 
 void printImu(float x, float y, float z)
@@ -187,8 +156,7 @@ void printImu(float x, float y, float z)
     for(int i = 0; buff[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buff[i];
-        
-        // every char write in the buffer augment the index
+
         if (ind_buf_write >= DIMUB)
         {
             ind_buf_write = 0;
@@ -198,10 +166,9 @@ void printImu(float x, float y, float z)
             ind_buf_write++;
         }    
     }   
-    // send the value trough UART  
+    // to send the value trough UART trasmission
     if (U1STAbits.UTXBF == 0){ 
         IFS0bits.U1TXIF = 1; 
-        //IEC0bits.U1TXIE = 1;
     }
 }
 
@@ -224,7 +191,7 @@ float magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
 
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {   
-     //set the flag to zero
+    //set the flag to zero
     IFS0bits.U1TXIF = 0;
     
     while((U1STAbits.UTXBF != 1) && (ind_buf_read != ind_buf_write))
@@ -241,46 +208,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
             ind_buf_read++;
         }
     }
-    /*else{
-        IEC0bits.U1TXIE = 0;
-    }*/
-}
-
-void spi_config()
-{
-    // SPI setting
-    SPI1CON1bits.MSTEN = 1; // master mode 
-    SPI1CON1bits.MODE16 = 0; // 8 bit mode
-    SPI1CON1bits.PPRE =  0;// setting the primary prescaler (pg 342)
-    SPI1CON1bits.SPRE = 5; // setting the secondary prescaler
-    SPI1CON1bits.CKP = 1; // complete!!!!!!
-    SPI1STATbits.SPIEN = 1; // enable the SPI 
-}
-
-void tr_uart_config()
-{
-    // UART Setting configuration
-    // U1BRG = round((FCY /(16LL * BAUD_RATE))-1); 
-    U1BRG = URTBR; // setting the baud rate register directly in integer to avoid floating value
-    U1STAbits.UTXISEL0 = 0;
-    U1STAbits.UTXISEL1 = 0;
-}
-
-void chip_selecting()
-{  
-    // Selecting all as inactive to have only one chip select active, so selected to 0.
-    TRISBbits.TRISB3 = 0; // Selecting the port of CS1 (accelerometer) as output
-    TRISBbits.TRISB4 = 0; // Selecting the port of CS2 (gyroscope) as output
-    TRISDbits.TRISD6 = 0; // Selecting the port of CS3 (magnetometer) as output
-    LATBbits.LATB3 = 1; // accelerometer set to 1 (inactive)
-    LATBbits.LATB4 = 1; // gyroscope set to 1 (inactive)
-    LATDbits.LATD6 = 1; // magnetometer set to 1 (inactive)
-}
-
-void init_config(){
-    ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
-    
-    INTCON2bits.GIE = 1; // set global interrupt enable 
 }
 
 void printGrad(float value)
@@ -292,8 +219,7 @@ void printGrad(float value)
     for(int i = 0; buffer[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buffer[i];
-        
-        // every char write in the buffer augment the index
+
         if (ind_buf_write >= DIMUB)
         {
             ind_buf_write = 0;

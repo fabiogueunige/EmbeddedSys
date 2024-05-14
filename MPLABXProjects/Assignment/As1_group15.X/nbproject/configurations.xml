@@ -5,6 +5,9 @@
                    displayName="Header Files"
                    projectFiles="true">
       <itemPath>timer.h</itemPath>
+      <itemPath>initlib.h</itemPath>
+      <itemPath>spilib.h</itemPath>
+      <itemPath>uartlib.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -20,6 +23,9 @@
                    projectFiles="true">
       <itemPath>timer.c</itemPath>
       <itemPath>main.c</itemPath>
+      <itemPath>initlib.c</itemPath>
+      <itemPath>uartlib.c</itemPath>
+      <itemPath>spilib.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>

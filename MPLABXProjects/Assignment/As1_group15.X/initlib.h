@@ -12,13 +12,9 @@
 
 #include <xc.h> // include processor files - each processor file is guarded.  
 // TODO Insert appropriate #include <>
-#define TIMER1 1
-#define TIMER2 2
-#define TIMER3 3
-#define TIMER4 4
-#define TIMER5 5
 
-#define FCY 72000000
+void init_config();
+void myfunction(int ,int ); // function that use 7 ms to be completed
 
 
 
@@ -45,4 +41,3 @@ extern "C" {
 #endif /* __cplusplus */
 
 #endif	/* XC_HEADER_TEMPLATE_H */
-

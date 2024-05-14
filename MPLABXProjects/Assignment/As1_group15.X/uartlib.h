@@ -12,20 +12,12 @@
 
 #include <xc.h> // include processor files - each processor file is guarded.  
 // TODO Insert appropriate #include <>
-#define TIMER1 1
-#define TIMER2 2
-#define TIMER3 3
-#define TIMER4 4
-#define TIMER5 5
 
-#define FCY 72000000
+#define URTBR 468 // uart baud rate
 
-
-
-void tmr_setup_period(int timer, int ms);
-int tmr_wait_period(int timer);
-void tmr_wait_ms(int timer, int ms);
 // TODO Insert C++ class definitions if appropriate
+
+void tr_uart_config();
 
 // TODO Insert declarations
 
