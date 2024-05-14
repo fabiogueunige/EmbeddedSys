@@ -13,15 +13,15 @@
 
 
 #define URTBR 468 // uart baud rate
-#define DIMSPI 5 // counter 
-#define MAGFREQ 4
-#define UARTFREQ 20
-#define DIMUB 50
+#define DIMSPI 5 // counter for spi
+#define MAGFREQ 4 // couinter for magnetometer
+#define UARTFREQ 20 // counter for the uart
+#define DIMUB 50 // dimension of the circular buffer
 
 void myfunction(int ,int ); // function that use 7 ms to be completed
 int spi_write (unsigned int addr); // SPI writing function
-void printGrad(float); // printing 
-void printImu(float, float, float);
+void printGrad(float); // printing the grad
+void printImu(float, float, float);  // print the valu 
 float magnAcquisition (int , int , int, int); // function to acquire x,y,x data from magnetometer
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void);
 
@@ -109,22 +109,21 @@ int main(void) {
         
         if (cnt % MAGFREQ == 0) // read the magnetometer every 25Hz, 40ms
         {
-            LATDbits.LATD6 = 0;
+            LATDbits.LATD6 = 0; // chip select associated at magnetometer 
             spi_write(0x42 | 0x80); // So next time we will read the lsb of x magnetometer
             
             // acquiring x values from the magnetometer
             x[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8, 8);
-            
-                       
+                     
             // acquiring y values from the magnetometer
             y[ind_spi] = magnAcquisition(0x00, 0x00, 0xF8, 8);
  
             // acquiring z values from the magnetometer
             z[ind_spi] = magnAcquisition(0x00, 0x00, 0xFE, 2);
-            LATDbits.LATD6 = 1;
+            LATDbits.LATD6 = 1; // chip select
 
             // control on spi index of the circular buffer
-            if (ind_spi >= DIMSPI)
+            if (ind_spi >= DIMSPI) 
             {
                 ind_spi = 0;
             }
@@ -148,7 +147,7 @@ int main(void) {
             printImu(xavg, yavg, zavg);
             
             // gradient computation
-            grad = atan2 (xavg, yavg);
+            grad = atan2 (yavg, xavg);
             grad = (grad * 180.0) / M_PI;
             printGrad(grad);
             
@@ -184,7 +183,7 @@ void printImu(float x, float y, float z)
 
     sprintf(buff,"$MAG,%.2f,%.2f,%.2f*", x, y, z); 
     
-    // copy the men value comes from spi inside the circular buffer
+    // copy the mean value comes from spi inside the circular buffer
     for(int i = 0; buff[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buff[i];
@@ -200,7 +199,7 @@ void printImu(float x, float y, float z)
         }    
     }   
     // send the value trough UART  
-    if (U1STAbits.UTXBF == 0){
+    if (U1STAbits.UTXBF == 0){ 
         IFS0bits.U1TXIF = 1; 
         //IEC0bits.U1TXIE = 1;
     }
@@ -210,10 +209,8 @@ float magnAcquisition (int addr, int next_addr, int mask_lsb, int divider)
 {
     int msb = 0, lsb = 0, full = 0;
 
-
     lsb = spi_write(addr);
     msb = spi_write(next_addr);
-
 
     lsb = lsb & mask_lsb; //  mask for lsb to cancel the bits
     
@@ -248,8 +245,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
         IEC0bits.U1TXIE = 0;
     }*/
 }
-
-
 
 void spi_config()
 {
@@ -294,7 +289,7 @@ void printGrad(float value)
 
     sprintf(buffer,"$YAW,%.2f", value); 
     
-    for(int i =0; buffer[i] != 0; i++)
+    for(int i = 0; buffer[i] != 0; i++)
     {
         UBuffer[ind_buf_write] = buffer[i];
         
