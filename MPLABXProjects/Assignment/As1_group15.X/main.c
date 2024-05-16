@@ -56,16 +56,10 @@ int main(void) {
     RPOR12bits.RP109R = 0b000101; // (pin = functionality) RP109 tied to SPI1 Data output (SDO1) 
     RPOR11bits.RP108R = 0b000110; // RP108 tied to SPI1 Clock output (SCK1)    
     
+    // function for configure the uart in transmission
     tr_uart_config();
-    
-    // Pin remap
-    RPOR0bits.RP64R = 1; // remap the pin tx of UART1 (U1TX) 
-    RPINR18bits.U1RXR = 0b1001011; // Receiver functionality to the register
-    
-    // Enabling the transmission and uart
-    U1MODEbits.UARTEN = 1; // enable UART
-    U1STAbits.UTXEN = 1; // UART transmission enable
-    // Setting of the interrupt for trasmission
+       
+    // Setting of the interrupt for transmission
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 0; // disabling U1TX interrupt 
     
@@ -80,14 +74,14 @@ int main(void) {
     // Going on active mode changing the magnetometer output data rate
     LATDbits.LATD6 = 0;
     spi_write(0x4C); 
-    spi_write(0b00110000); // istruction for change the data rate at 25hz
+    spi_write(0b00110000); // instruction for change the data rate at 25hz
     LATDbits.LATD6 = 1;
     tmr_wait_ms (TIMER3, 2);
         
     // timer setup
     tmr_setup_period (TIMER2, 10); // for syncronize the main
     
-    IEC0bits.U1TXIE = 1; // activate the interrupt for the uart trasmission
+    IEC0bits.U1TXIE = 1; // activate the interrupt for the uart transmission
         
     while(1)
     {

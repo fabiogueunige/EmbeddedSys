@@ -7,8 +7,8 @@
 
 // This is a guard condition so that contents of this file are not included
 // more than once.  
-#ifndef XC_HEADER_TEMPLATE_H
-#define	XC_HEADER_TEMPLATE_H
+#ifndef INITLIB_H
+#define	INITLIB_H
 
 #include <xc.h> // include processor files - each processor file is guarded.  
 // TODO Insert appropriate #include <>
@@ -17,10 +17,6 @@ void init_config();
 void myfunction(int ,int ); // function that use 7 ms to be completed
 
 
-
-void tmr_setup_period(int timer, int ms);
-int tmr_wait_period(int timer);
-void tmr_wait_ms(int timer, int ms);
 // TODO Insert C++ class definitions if appropriate
 
 // TODO Insert declarations

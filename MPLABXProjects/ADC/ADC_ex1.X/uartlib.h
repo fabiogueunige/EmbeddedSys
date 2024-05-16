@@ -7,17 +7,17 @@
 
 // This is a guard condition so that contents of this file are not included
 // more than once.  
-#ifndef SPILIB_H
-#define	SPILIB_H
+#ifndef UARTLIB_H
+#define	UARTLIB_H
 
 #include <xc.h> // include processor files - each processor file is guarded.  
 // TODO Insert appropriate #include <>
 
+#define URTBR 468 // uart baud rate
+
 // TODO Insert C++ class definitions if appropriate
 
-void spi_config();
-void chip_selecting();
-int spi_write(unsigned int );
+void tr_uart_config();
 
 // TODO Insert declarations
 
@@ -36,5 +36,5 @@ extern "C" {
 }
 #endif /* __cplusplus */
 
-#endif	/* XC_HEADER_TEMPLATE_H */
+#endif	/* UARTLIB_H */
 
