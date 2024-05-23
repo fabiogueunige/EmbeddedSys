@@ -17,10 +17,6 @@ float volt2cm(float );
 void printValue (float , float );
 float battery_conversion (float );
 
-
-
-
-
 int main(void) {
     // set all the pin as digital, then set 1 in the code when need to use it as analog
     // 0 = digital; 1 = analog
@@ -44,6 +40,10 @@ int main(void) {
     // select how sampling end and conversion begin( remember to set SAMP)
     AD1CON1bits.SSRC = 7; // chose automatic conversion (for manual set = 0)
     // select how many channel use
+    
+    AD1CON2bits.SMPI = 0b001; // set the SMPI (sample per interrupt) to take both
+    // pin datas
+    
     //AD1CON2bits.CHPS = 0; // use only channel 0 
     AD1CON2bits.CSCNA = 1; // activate scan mode
    
@@ -60,20 +60,15 @@ int main(void) {
     //MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
     
-
-    
     tmr_setup_period(TIMER1, 1);
     int counter;
     float battery_data;
     float infraRed_data;
-   
-    
-    
     
     while(1){
         
         infraRed_data = ADC1BUF0; // read data from infrared
-        battery_data = ADC1BUFB; // read data from battery
+        battery_data = ADC1BUF1; // read data from battery
         
         if(counter == 100){
             counter = 0;
@@ -93,7 +88,7 @@ int main(void) {
 float battery_conversion (float value){
     float value_volt;
 
-    value_volt = (value / 1024) * 24;
+    value_volt = (value / 1024);
     value_volt *= 3;
     
     return value_volt;
@@ -103,7 +98,7 @@ float battery_conversion (float value){
 float bit2volt (float value){
     float value_volt;
 
-    value_volt = (value / 1024) * 3.3;    
+    value_volt = (value / 1024) * 3.3;   
     return value_volt;
 }
 
