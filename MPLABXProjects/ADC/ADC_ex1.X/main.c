@@ -46,9 +46,7 @@ int main(void) {
     tmr_setup_period (TIMER1, 200);
     float buffer_value;
     float volt;
-    
 
-    
     while(1)
     {
         if(AD1CON1bits.SAMP == 1){
@@ -65,8 +63,7 @@ int main(void) {
             volt = battery_status (buffer_value);
             printValue (volt);           
         }
-        
-        
+
         while(!tmr_wait_period(TIMER1));
     }
     
@@ -101,5 +98,4 @@ void printValue (float val)
         U1TXREG = buff[i]; 
         while (U1STAbits.UTXBF == 1);
     }   
-    
 }

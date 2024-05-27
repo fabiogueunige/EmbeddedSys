@@ -123,4 +123,9 @@ void printValue (float val, float val2)
         while (U1STAbits.UTXBF == 1);
     }   
     
-}
+}// ATTENZIONE!!!!
+/*
+ L'idea migliore usando ADC è di salvare i valori dei pin dell'adc non appena 
+ * il "done" diventa 1 all'interno di un buffer per evitare che vengano sovrascritti da 
+ * nuovi valori e perdere i precedenti
+ */
