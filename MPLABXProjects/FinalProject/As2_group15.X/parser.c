@@ -28,7 +28,7 @@ int parse_byte(parser_state* ps, char byte) {
 				ps->state = STATE_DOLLAR; // get ready for a new message
                 ps->msg_type[ps->index_type] = '\0';
 				ps->msg_payload[0] = '\0'; // no payload
-                return NEW_MESSAGE;
+                return NO_MESSAGE; // changed from NEW_MESSAGE (for me it was wrong)
             } else {
                 ps->msg_type[ps->index_type] = byte; // ok!
                 ps->index_type++; // increment for the next time;

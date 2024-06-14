@@ -28,7 +28,7 @@ void uart_config()
     // Interrupts manage
     // enable for UART flag and interrupts
     IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
-    // IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
+    IEC0bits.U1RXIE = 0; // disable interrupt for UART 1 receiver
     
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 0; // disabling U1TX interrupt 

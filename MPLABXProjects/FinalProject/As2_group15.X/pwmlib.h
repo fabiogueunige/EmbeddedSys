@@ -15,6 +15,11 @@
 #define WHNULL 0
 #define WHMOVESTD 7200
 
+#define FORWARD 1
+#define COUNT_ROTATION 2
+#define CLOCKWISE_ROTATION 3
+#define BACKWARD 4
+
 void pwmRemap();
 void pwmParametrization();
 void pwmConfig(); // standard confiuration

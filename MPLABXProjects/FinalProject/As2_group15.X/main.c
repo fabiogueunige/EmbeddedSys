@@ -29,12 +29,14 @@
 #define WAIT_FOR_START 0
 #define EXECUTE 1
 
+
 /* ################################################################
                         Interrupt functions
     ###################################################################*/
 void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // timer interrupt for debouncing
 void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void);  // button interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
+void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
 
 /* ################################################################
                         functions definition
@@ -59,8 +61,11 @@ typedef struct {
 heartbeat schedInfo[MAX_TASKS]; // task of the scheduler
 int state; // state of the state machine
 int checkInterrupt; // boolean to know if button pressed
+int return_parser; // return value of the parser
 
 data data_values; // data structure for the values of the sensors
+parser_state pstate; // parser state
+fifo_pwm fifo_command; // circular buffer for the commands for motors
 
 int main(void) 
 {
@@ -83,6 +88,12 @@ int main(void)
     data_values.battery_data = 0.0; // initial value for the battery
     data_values.infraRed_data = 0.0; // initial value for the infrared
     fifo_init(data_values.fifo_write); // initialization of the circular buffer
+
+    pstate.state = STATE_DOLLAR; // initial state for the parser
+	pstate.index_type = 0; // initial index for the type of parser
+	pstate.index_payload = 0; // initial index for the payload of parser
+    return_parser = 0; // initial value for the parser
+    fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
     
     /* ################################################################
                         Defining all the tasks
@@ -112,14 +123,14 @@ int main(void)
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 1;
+    schedInfo[3].enable = 0;
 
     // Print Infrared
     schedInfo[4].n = -10;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 1;
+    schedInfo[4].enable = 0;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -181,6 +192,10 @@ int main(void)
     IEC1bits.INT1IE = 1; // enable interrupt
     IFS0bits.T1IF = 0; // reset interrupt flag timer 1
 
+    IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
+    IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
+    
+    IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
     
     
@@ -204,6 +219,38 @@ int main(void)
         }
         
         scheduler(schedInfo, MAX_TASKS);
+        
+        // check if the parser has received a new message
+        if (return_parser == NEW_MESSAGE)
+        {
+            return_parser = NO_MESSAGE;
+
+            // Saving the command in the circular buffer
+            if (fifo_command.head != fifo_command.tail -1)
+            {
+                fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
+                fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
+                U1TXREG = fifo_command.msg[fifo_command.head][0];
+                U1TXREG = fifo_command.msg[fifo_command.head][1];
+                if (fifo_command.head >= MAX_COMMANDS - 1)
+                {
+                    fifo_command.head = 0;
+                }
+                else
+                {
+                    fifo_command.head++;
+                }
+            }
+
+            /*  CAMBIARE CON MAK 1 E 0
+            for (int i = 0; pstate.msg_payload[i] != '\0'; i++)
+            { // modificare on MAG0 e MAG1
+                while(U1STAbits.UTXBF != 0); // wait for the buffer to be empty (to write the message
+                U1TXREG = pstate.msg_payload[i];
+            }*/
+
+
+        }
          
 
         
@@ -213,6 +260,9 @@ int main(void)
     return 0;
 }
 
+/* ################################################################
+                            Interrupt functions
+    ###################################################################*/
 void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     // interrupt to change the status of state machine
     IFS0bits.T1IF = 0; // reset interrupt flag
@@ -233,7 +283,7 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IEC1bits.INT1IE = 1; // enable the interrupt
 }
 
-//interrupt associated to button 2
+//interrupt associated to button 
 void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void){
     // Advertise button has been pressed
     // The change of the state will be done in T1 interrupt
@@ -266,6 +316,19 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
         }
     }
 }
+
+void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
+{
+    // interrupt to receive the data from the uart and save them in the circular buffer
+    //set the flag to zero
+    IFS0bits.U1RXIF = 0;
+    char c = U1RXREG;
+    return_parser = parse_byte(&pstate, c);
+}
+
+/* ################################################################
+                            Scheduler functions
+    ###################################################################*/
 
 void taskBlinkLedA0 (void* param)
 {

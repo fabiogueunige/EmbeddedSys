@@ -2,6 +2,7 @@
 #define	CB_H
 
 #define DIMFIFOWRITE 500
+#define MAX_COMMANDS 10
 
 typedef struct {
     int head;
@@ -9,7 +10,15 @@ typedef struct {
     char msg [DIMFIFOWRITE]; 
 } fifo;
 
+typedef struct {
+    int head;
+    int tail;
+    int msg [MAX_COMMANDS][2]; 
+} fifo_pwm;
+
 void fifo_init();
+
+void fifo_pwm_init();
 
 #endif	/* CB_H */
 
