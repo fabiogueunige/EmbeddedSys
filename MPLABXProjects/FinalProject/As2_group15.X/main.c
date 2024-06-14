@@ -24,7 +24,7 @@
                         Parameter Definition
     ###################################################################*/
 
-#define MAX_TASKS 2
+#define MAX_TASKS 4
 #define WAIT_FOR_START 0
 #define EXECUTE 1
 
@@ -37,13 +37,11 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void);
 /* ################################################################
                         functions definition
     ###################################################################*/
-void execute(); // to change the enable
-void wait_for_start(); // to change the enable
 void taskBlinkLedA0 (void* );
 void taskBlinkIndicators (void* );
 void taskADCSensing(void* );
 
-void printValue (float , float );
+void taskPrint(void* );
 
 /* ################################################################
                         global variables
@@ -56,7 +54,7 @@ typedef struct {
 
 heartbeat schedInfo[MAX_TASKS]; // task of the scheduler
 int state; // state of the state machine
-int checkInterrupt; // boolean to know if button presseìd
+int checkInterrupt; // boolean to know if button presseï¿½d
 
 data data_values; 
 
@@ -82,6 +80,37 @@ int main(void)
     data_values.infraRed_data = 0.0;
     
     /* ################################################################
+                        Defining all the tasks
+    ###################################################################*/
+    heartbeat schedInfo[MAX_TASKS];
+    // LEs A0 task config
+    schedInfo[0].n = 0;
+    schedInfo[0].N = 1000;
+    schedInfo[0].f = taskBlinkLedA0;
+    schedInfo[0].params = NULL;
+    schedInfo[0].enable = 1;
+    // indicator conig
+    schedInfo[1].n = -2;
+    schedInfo[1].N = 1000;
+    schedInfo[1].f = taskBlinkIndicators;
+    schedInfo[1].params = NULL;
+    schedInfo[1].enable = 1;
+    
+    // ADC acquisition
+    schedInfo[2].n = 0;
+    schedInfo[2].N = 1;
+    schedInfo[2].f = taskADCSensing;
+    schedInfo[2].params = (void*)(&data_values);
+    schedInfo[2].enable = 1;
+    
+    // ADC acquisition
+    schedInfo[3].n = 0;
+    schedInfo[3].N = 1000;
+    schedInfo[3].f = taskPrint;
+    schedInfo[3].params = (void*)(&data_values);
+    schedInfo[3].enable = 1;
+
+    /* ################################################################
                         pin remap and setup of the led
     ###################################################################*/
     // LED A0 setup
@@ -104,32 +133,8 @@ int main(void)
     ###################################################################*/
     // Mapping battery (no need)
     // enable the infra-red sensor
-    TRISBbits.TRISB9 = 0; // set the enable pin as output
-    LATBbits.LATB9 = 1; //set the high value for enable the infra-red sensor
-
-    /* ################################################################
-                        Defining all the tasks
-    ###################################################################*/
-    heartbeat schedInfo[MAX_TASKS];
-    // LEs A0 task config
-    schedInfo[0].n = 0;
-    schedInfo[0].N = 1000;
-    schedInfo[0].f = taskBlinkLedA0;
-    schedInfo[0].params = NULL;
-    schedInfo[0].enable = 1;
-    // indicator conig
-    schedInfo[1].n = -2;
-    schedInfo[1].N = 1000;
-    schedInfo[1].f = taskBlinkIndicators;
-    schedInfo[1].params = NULL;
-    schedInfo[1].enable = 1;
-    
-    // ADC acquisition
-    schedInfo[2].n = 0;
-    schedInfo[2].N = 20;
-    schedInfo[2].f = taskADCSensing;
-    schedInfo[2].params = (void*)(&data_values);
-    schedInfo[2].enable = 1;
+    TRISAbits.TRISA3 = 0; // set the enable pin as output
+    LATAbits.LATA3 = 1; //set the high value for enable the infra-red sensor
     
     /* ################################################################
                         Peripheral configuration
@@ -148,10 +153,10 @@ int main(void)
     ###################################################################*/
     // select the scan pin
     AD1CSSLbits.CSS11 = 1; // Enable AN11 for scan (battery)
-    AD1CSSLbits.CSS14 = 1; // Enable AN14 for scan (infra-red)
+    AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
-    ANSELBbits.ANSB14 = 0x0001; // IR input as analog value
+    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value
     
     //MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
@@ -166,7 +171,6 @@ int main(void)
     IEC1bits.INT1IE = 1; // enable interrupt
     IFS0bits.T1IF = 0; // reset interrupt flag timer 1
     
-    U1TXREG = 'c'; 
     
     while (1)
     {
@@ -174,12 +178,10 @@ int main(void)
         {
             if (state == WAIT_FOR_START)
             {
-                // wait_for_interrupt ();
                 schedInfo[1].enable = 1;
             }
             else
             {
-                // execute();
                 schedInfo[1].enable = 0; 
                 LATBbits.LATB8 = 0;
                 LATFbits.LATF1 = 0;
@@ -188,7 +190,7 @@ int main(void)
         }
         
         scheduler(schedInfo, MAX_TASKS);
-        U1TXREG = data_values.battery_data; 
+         
 
         
         while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb
@@ -250,57 +252,21 @@ void taskADCSensing(void* param)
     int potBitsBatt = ADC1BUF0;
     int potBitsIr = ADC1BUF1;
     cd->battery_data = battery_conversion((float) potBitsBatt); 
-    cd->infraRed_data = bit2volt((float) potBitsIr);
-    cd->infraRed_data = volt2cm(cd->infraRed_data);
+    float batt_data = bit2volt((float) potBitsIr);
+    cd->infraRed_data = volt2cm(batt_data);
 }
-
-/*void printValue (float val, float val2)
+void taskPrint (void* param)
 {
+    data* cd = (data*) param;
     char buff[40];
 
-    sprintf(buff,"$SENS,%.3f,%.3f*", val, val2); 
+    sprintf(buff,"$SENS,%.3f,%.3f*", cd->battery_data, cd->infraRed_data); 
     
     // write the values of the ADC register
     for(int i = 0; buff[i] != 0; i++)
     {
         U1TXREG = buff[i]; 
         while (U1STAbits.UTXBF == 1);
-    }   
-    
-}*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void execute() // to change the enable
-{
-    // modify the enable
-    schedInfo[1].enable = 0; // deactivating the indicators
-    
+    } 
 }
 
-void wait_for_start()
-{ 
-/**
- * All motor must be 0 (stop)
- * Led A0 blink at 1HZ (1000 reps of while loop)
- * Left and right indicators blink at 1HZ (left = RB8, right = RF1)
- * 
- * Button RE8 pressed -> go new state
- */
-    schedInfo[1].enable = 1; // activating the indicators
-}

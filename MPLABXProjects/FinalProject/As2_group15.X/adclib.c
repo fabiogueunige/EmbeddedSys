@@ -38,7 +38,7 @@ void adc_scanmode_config()
 float battery_conversion (float value){
     float value_volt;
 
-    value_volt = (value / 1024);
+    value_volt = bit2volt(value); // controlla questa riga di codice
     value_volt *= 3;
     
     return value_volt;
