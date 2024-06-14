@@ -7,13 +7,14 @@
 
 
 #include "xc.h"
+#include <math.h>
 #include "adclib.h"
 
 /* !! ADC_scan_mode_config
 * Only scan mode configuration:
  * remember to enable the pin as output (TRIS and LAT)
  * select the scan pin (e.g AD1CSSLbits.CSS5 = 1;)
- * //set the input pin as analog (value 1) (e.g ANSELBbits.ANSB5 = 0x0001;)
+ * set the input pin as analog (value 1) (e.g ANSELBbits.ANSB5 = 0x0001;)
  * As last thing turn on ADC (= AD1CON1bits.ADON = 1; // turn ADC on)
 */
 void adc_scanmode_config()

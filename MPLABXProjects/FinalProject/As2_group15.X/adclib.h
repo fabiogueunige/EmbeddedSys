@@ -17,6 +17,7 @@ float battery_conversion (float );
 float bit2volt (float );
 float volt2cm(float );
 
+
 #ifdef	__cplusplus
 extern "C" {
 #endif /* __cplusplus */

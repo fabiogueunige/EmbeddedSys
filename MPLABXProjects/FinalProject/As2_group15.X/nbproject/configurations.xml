@@ -8,6 +8,9 @@
       <itemPath>timer.h</itemPath>
       <itemPath>uartlib.h</itemPath>
       <itemPath>adclib.h</itemPath>
+      <itemPath>scheduler.h</itemPath>
+      <itemPath>pareser.h</itemPath>
+      <itemPath>parser.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -26,6 +29,8 @@
       <itemPath>timer.c</itemPath>
       <itemPath>pwmlib.c</itemPath>
       <itemPath>adclib.c</itemPath>
+      <itemPath>scheduler.c</itemPath>
+      <itemPath>parser.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>
