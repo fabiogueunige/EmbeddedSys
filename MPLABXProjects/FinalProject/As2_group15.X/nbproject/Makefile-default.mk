@@ -51,17 +51,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=main.c uartlib.c timer.c pwmlib.c adclib.c scheduler.c parser.c
+SOURCEFILES_QUOTED_IF_SPACED=main.c uartlib.c timer.c pwmlib.c adclib.c scheduler.c parser.c circularbufferlib.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.o ${OBJECTDIR}/uartlib.o ${OBJECTDIR}/timer.o ${OBJECTDIR}/pwmlib.o ${OBJECTDIR}/adclib.o ${OBJECTDIR}/scheduler.o ${OBJECTDIR}/parser.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/main.o.d ${OBJECTDIR}/uartlib.o.d ${OBJECTDIR}/timer.o.d ${OBJECTDIR}/pwmlib.o.d ${OBJECTDIR}/adclib.o.d ${OBJECTDIR}/scheduler.o.d ${OBJECTDIR}/parser.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/main.o ${OBJECTDIR}/uartlib.o ${OBJECTDIR}/timer.o ${OBJECTDIR}/pwmlib.o ${OBJECTDIR}/adclib.o ${OBJECTDIR}/scheduler.o ${OBJECTDIR}/parser.o ${OBJECTDIR}/circularbufferlib.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/main.o.d ${OBJECTDIR}/uartlib.o.d ${OBJECTDIR}/timer.o.d ${OBJECTDIR}/pwmlib.o.d ${OBJECTDIR}/adclib.o.d ${OBJECTDIR}/scheduler.o.d ${OBJECTDIR}/parser.o.d ${OBJECTDIR}/circularbufferlib.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/main.o ${OBJECTDIR}/uartlib.o ${OBJECTDIR}/timer.o ${OBJECTDIR}/pwmlib.o ${OBJECTDIR}/adclib.o ${OBJECTDIR}/scheduler.o ${OBJECTDIR}/parser.o
+OBJECTFILES=${OBJECTDIR}/main.o ${OBJECTDIR}/uartlib.o ${OBJECTDIR}/timer.o ${OBJECTDIR}/pwmlib.o ${OBJECTDIR}/adclib.o ${OBJECTDIR}/scheduler.o ${OBJECTDIR}/parser.o ${OBJECTDIR}/circularbufferlib.o
 
 # Source Files
-SOURCEFILES=main.c uartlib.c timer.c pwmlib.c adclib.c scheduler.c parser.c
+SOURCEFILES=main.c uartlib.c timer.c pwmlib.c adclib.c scheduler.c parser.c circularbufferlib.c
 
 
 
@@ -131,6 +131,12 @@ ${OBJECTDIR}/parser.o: parser.c  .generated_files/flags/default/c2ed0939f3336a92
 	@${RM} ${OBJECTDIR}/parser.o 
 	${MP_CC} $(MP_EXTRA_CC_PRE)  parser.c  -o ${OBJECTDIR}/parser.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MP -MMD -MF "${OBJECTDIR}/parser.o.d"      -g -D__DEBUG   -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off    -mdfp="${DFP_DIR}/xc16"
 	
+${OBJECTDIR}/circularbufferlib.o: circularbufferlib.c  .generated_files/flags/default/b5cb74cf4aefc27e605f981ace78c7042b9982ae .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/circularbufferlib.o.d 
+	@${RM} ${OBJECTDIR}/circularbufferlib.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  circularbufferlib.c  -o ${OBJECTDIR}/circularbufferlib.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MP -MMD -MF "${OBJECTDIR}/circularbufferlib.o.d"      -g -D__DEBUG   -mno-eds-warn  -omf=elf -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off    -mdfp="${DFP_DIR}/xc16"
+	
 else
 ${OBJECTDIR}/main.o: main.c  .generated_files/flags/default/ecb7395a132643ea7403f393e5034f46b6b364d3 .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
 	@${MKDIR} "${OBJECTDIR}" 
@@ -173,6 +179,12 @@ ${OBJECTDIR}/parser.o: parser.c  .generated_files/flags/default/5e2d191f10c3f16b
 	@${RM} ${OBJECTDIR}/parser.o.d 
 	@${RM} ${OBJECTDIR}/parser.o 
 	${MP_CC} $(MP_EXTRA_CC_PRE)  parser.c  -o ${OBJECTDIR}/parser.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MP -MMD -MF "${OBJECTDIR}/parser.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off    -mdfp="${DFP_DIR}/xc16"
+	
+${OBJECTDIR}/circularbufferlib.o: circularbufferlib.c  .generated_files/flags/default/37637adef7e37f144d66495485df7a8bb37721ab .generated_files/flags/default/da39a3ee5e6b4b0d3255bfef95601890afd80709
+	@${MKDIR} "${OBJECTDIR}" 
+	@${RM} ${OBJECTDIR}/circularbufferlib.o.d 
+	@${RM} ${OBJECTDIR}/circularbufferlib.o 
+	${MP_CC} $(MP_EXTRA_CC_PRE)  circularbufferlib.c  -o ${OBJECTDIR}/circularbufferlib.o  -c -mcpu=$(MP_PROCESSOR_OPTION)  -MP -MMD -MF "${OBJECTDIR}/circularbufferlib.o.d"      -mno-eds-warn  -g -omf=elf -DXPRJ_default=$(CND_CONF)    $(COMPARISON_BUILD)  -O0 -msmart-io=1 -Wall -msfr-warn=off    -mdfp="${DFP_DIR}/xc16"
 	
 endif
 

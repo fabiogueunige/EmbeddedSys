@@ -61,8 +61,7 @@ void pwmConfig()
     // standard pwm configuration
     pwmRemap();
     pwmParametrization();
-    whstop();
-    
+    whstop();  
 }
 
 void moveForward (int wh2)

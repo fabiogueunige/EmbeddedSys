@@ -31,5 +31,5 @@ void uart_config()
     // IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
     
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
-    // IEC0bits.U1TXIE = 0; // disabling U1TX interrupt 
+    IEC0bits.U1TXIE = 0; // disabling U1TX interrupt 
 }

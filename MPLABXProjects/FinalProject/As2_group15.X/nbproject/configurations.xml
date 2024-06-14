@@ -9,8 +9,8 @@
       <itemPath>uartlib.h</itemPath>
       <itemPath>adclib.h</itemPath>
       <itemPath>scheduler.h</itemPath>
-      <itemPath>pareser.h</itemPath>
       <itemPath>parser.h</itemPath>
+      <itemPath>circularbufferlib.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -31,6 +31,7 @@
       <itemPath>adclib.c</itemPath>
       <itemPath>scheduler.c</itemPath>
       <itemPath>parser.c</itemPath>
+      <itemPath>circularbufferlib.c</itemPath>
     </logicalFolder>
   </logicalFolder>
   <projectmakefile>Makefile</projectmakefile>
