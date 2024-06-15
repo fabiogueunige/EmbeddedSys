@@ -127,5 +127,6 @@ void input_move(int input)
             break;
         default:
             whstop();
+            break;
     }
 }

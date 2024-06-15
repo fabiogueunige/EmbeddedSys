@@ -4,7 +4,7 @@
  * * Chiappe Andrea
  * * Di Donna Alberto
  * * Guelfi Fabio s5004782
- * * Utegaliyeva ...
+ * * Utegaliyeva Aidana 
  *
  * Created on June 13, 2024, 12:36 PM
  */
@@ -32,7 +32,7 @@
 
 /* ################################################################
                         Interrupt functions
-    ###################################################################*/
+###################################################################*/
 void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // timer interrupt for debouncing
 void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // button interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
@@ -43,7 +43,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // butt
 
 /* ################################################################
                         functions definition
-    ###################################################################*/
+###################################################################*/
 void taskBlinkLedA0 (void* ); // task for the led A0
 void taskBlinkIndicators (void* ); // task for the indicators
 void taskADCSensing(void* ); // task for the ADC sensing
@@ -53,7 +53,7 @@ void taskPrintInfrared (void* ); // task for the infrared print on circular buff
 
 /* ################################################################
                         global variables
-    ###################################################################*/
+###################################################################*/
 typedef struct {
     float battery_data; // battery value
     float infraRed_data; // Infrared value
@@ -100,7 +100,7 @@ int main(void)
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
 
-    counter_for_int2 = 0; // counter for the interrupt 2
+    counter_for_int2 = 0; // counter for the interrupt 2 for timing
     
     /* ################################################################
                         Defining all the tasks
@@ -171,7 +171,6 @@ int main(void)
     
     adc_scanmode_config(); // setup for the ADC (battery and InfraRed)
     
-    // Controllare che non manchi ricezione, controlla se vanno bene gli interrupt (ric on, tr off))
     uart_config(); // uart trasmission and reception configuration
 
     pwmConfig(); // standard pwm configuration
@@ -194,31 +193,42 @@ int main(void)
     ###################################################################*/
     INTCON2bits.GIE = 1; // set global interrupt enable 
 
-    
+    // Interrupt for the button to change the state
     IFS1bits.INT1IF = 0; // clear interrupt flag
     IEC1bits.INT1IE = 1; // enable interrupt
     IFS0bits.T1IF = 0; // reset interrupt flag timer 1
 
+    // Interrupt for reception
     IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
     IEC0bits.U1RXIE = 1; // enable interrupt for UART 1 receiver
     
+    // Interrupt for trasmission
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
     
+    /*
+    // Interrupt for the motors pwm
     IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
     IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
-
+    // Interrupt for the timer 2 to respect the timing of the motors
     IFS0bits.T2IF = 0; // reset interrupt flag timer 2 (for INT2)
     IEC0bits.T2IE = 0; // enable interrupt for timer 2 (for INT2)
-    
+    */
+
     while (1)
     {
-        if (checkInterrupt == 1) // to enter only when the button has been pressed
+        if (checkInterrupt == 1) // to enter only when the button has been pressed to change status
         {
             if (state == WAIT_FOR_START)
             {
                 schedInfo[1].enable = 1; // enable the indicators
                 whstop(); // stop the wheels
+                if (counter_for_int2 != 0)
+                {
+                    counter_for_int2 = 0; // reset the counter
+                    fifo_command.msg[fifo_command.tail][0] = 0;
+                    fifo_command.msg[fifo_command.tail][1] = 0;
+                }
             }
             else
             {
@@ -229,16 +239,59 @@ int main(void)
                 // check the control buffer is not empty
                 if (fifo_command.tail != fifo_command.head)
                 {
-                   
+                    input_move (fifo_command.msg[fifo_command.tail][0]);
+                    
+                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    U1TXREG = fifo_command.msg[fifo_command.tail][1];
+
+                    if (tmr_wait_second(TIMER2, fifo_command.msg[fifo_command.tail][1]) == 1)
+                    {
+                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                    }
+
+                    /*  PROBLEM WITH SECONDS
+                    if (counter_for_int2 == (1000 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
+                    {
+                        // circular increment of the tail
+                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                        counter_for_int2 = 0; // reset the counter
+                    }
+                    else {
+                        counter_for_int2++;
+                    }*/
+
+                    /* Qui i diversi tentativi                    // setup the timer
                     // move the wheels
                     // input_move(fifo_command.msg[fifo_command.tail][0]); // move the robot
-                    moveForward(); // move the robot
+                    // moveForward(); // move the robot
                     //IFS1bits.INT2IF = 1; // activating the flag for intrerupt INT2
                     //IEC0bits.T2IE = 0; // disable interrupt for timer 2 to avoid change tail during the execution
 
                     //IEC0bits.T2IE = 1; // enable interrupt for timer 2 
-                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
-                    U1TXREG = fifo_command.msg[fifo_command.tail][1];
+
+                    if (counter_for_int2 == -1) // if the counter is -1 (first time)
+                    {
+                        // set the timer for the wheels motor
+                        tmr_setup_period(TIMER2, 200);
+                        counter_for_int2 = 0; // set the 
+                    }
+                    if (tmr_wait_period(TIMER2) == 1) // if the timer has expired (200ms)
+                    {
+                        if (counter_for_int2 == (5 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
+                        {
+                            // circular increment of the tail
+                            fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                            counter_for_int2 = -1; // reset the counter
+                        }
+                        else {
+                            tmr_setup_period(TIMER2, 200);
+                            counter_for_int2++;
+                        }
+                    } 
+                    */  
+                }
+                else {
+                    whstop(); // stop the wheels
                 }
             }
             checkInterrupt = 0;
@@ -286,7 +339,46 @@ int main(void)
 
 /* ################################################################
                             Interrupt functions
-    ###################################################################*/
+###################################################################*/
+// uart1 interrupt trasmission function 
+void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
+{   
+    //set the flag to zero
+    IFS0bits.U1TXIF = 0;
+    
+    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
+    {
+        U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
+        
+        // circular increment of the tail
+        data_values.fifo_write.tail = (data_values.fifo_write.tail + 1) % DIMFIFOWRITE;
+    }
+}
+
+// uart1 interrupt reception function
+void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
+{
+    // interrupt to receive the data from the uart and save them in the circular buffer
+    //set the flag to zero
+    IFS0bits.U1RXIF = 0;
+    char c = U1RXREG;
+    return_parser = parse_byte(&pstate, c);
+}
+
+//interrupt associated to button 
+void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void){
+    // Advertise button has been pressed
+    // The change of the state will be done in T1 interrupt
+    //interrupt code  
+    IEC1bits.INT1IE = 0; // disable the interrupt
+    IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
+    
+    // activating the interrupt
+    tmr_setup_period(TIMER1, 50); // setup the timer (consider the timer)
+    IEC0bits.T1IE = 1;
+}
+
+// interrupt for the timer 1
 void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     // interrupt to change the status of state machine
     IFS0bits.T1IF = 0; // reset interrupt flag
@@ -306,44 +398,8 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
     IEC1bits.INT1IE = 1; // enable the interrupt
 }
-
-//interrupt associated to button 
-void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void){
-    // Advertise button has been pressed
-    // The change of the state will be done in T1 interrupt
-    //interrupt code  
-    IEC1bits.INT1IE = 0; // disable the interrupt
-    IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
-    
-    // activating the interrupt
-    tmr_setup_period(TIMER1, 50); // setup the timer (consider the timer)
-    IEC0bits.T1IE = 1;
-}
-
-// uart1 interrupt function 
-void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
-{   
-    //set the flag to zero
-    IFS0bits.U1TXIF = 0;
-    
-    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
-    {
-        U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
-        
-        // circular increment of the tail
-        data_values.fifo_write.tail = (data_values.fifo_write.tail + 1) % DIMFIFOWRITE;
-    }
-}
-
-void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
-{
-    // interrupt to receive the data from the uart and save them in the circular buffer
-    //set the flag to zero
-    IFS0bits.U1RXIF = 0;
-    char c = U1RXREG;
-    return_parser = parse_byte(&pstate, c);
-}
-
+/*
+// interrupt associated to the motor
 void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
 {
     IEC1bits.INT2IE = 0; // disable the interrupt
@@ -354,7 +410,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
     IEC0bits.T2IE = 1; // enable the interrupt for the timer 2
 }
 
-
 void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void)
 {
     // timer interrupt for the time of the motor
@@ -364,18 +419,19 @@ void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void)
     {
         U1TXREG = 'T';
         IEC0bits.T2IE = 0; // disable interrupt for timer 2 (for INT2)
+        T2CONbits.TON = 0; // stop the timer
         // circular increment of the tail
         fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
         counter_for_int2 = 0; // reset the counter
 
-        //IFS1bits.INT2IF = 0; // clearing the flag for intrerupt INT2
+        IFS1bits.INT2IF = 0; // clearing the flag for intrerupt INT2
         IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
     }
     else {
         counter_for_int2++;    
     }
 }
-
+*/
 
 /* ################################################################
                             Scheduler functions
