@@ -34,9 +34,12 @@
                         Interrupt functions
     ###################################################################*/
 void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // timer interrupt for debouncing
-void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void);  // button interrupt
+void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // button interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
+
+void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void); // timer interrupt for the time of the motor
+void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // button interrupt to activate the mototr
 
 /* ################################################################
                         functions definition
@@ -67,6 +70,8 @@ data data_values; // data structure for the values of the sensors
 parser_state pstate; // parser state
 fifo_pwm fifo_command; // circular buffer for the commands for motors
 
+int counter_for_int2; // counter for the interrupt 2
+
 int main(void) 
 {
     /* ################################################################
@@ -94,6 +99,8 @@ int main(void)
 	pstate.index_payload = 0; // initial index for the payload of parser
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
+
+    counter_for_int2 = 0; // counter for the interrupt 2
     
     /* ################################################################
                         Defining all the tasks
@@ -198,6 +205,11 @@ int main(void)
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
     
+    IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
+    IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
+
+    IFS0bits.T2IF = 0; // reset interrupt flag timer 2 (for INT2)
+    IEC0bits.T2IE = 0; // enable interrupt for timer 2 (for INT2)
     
     while (1)
     {
@@ -212,23 +224,21 @@ int main(void)
             {
                 schedInfo[1].enable = 0; // disable the indicators
                 LATBbits.LATB8 = 0; // turn off the indicators
-                LATFbits.LATF1 = 0;
+                LATFbits.LATF1 = 0; // turn off the indicators
 
                 // check the control buffer is not empty
                 if (fifo_command.tail != fifo_command.head)
                 {
+                   
                     // move the wheels
-                    input_move(fifo_command.msg[fifo_command.tail][0]); // move the robot
+                    // input_move(fifo_command.msg[fifo_command.tail][0]); // move the robot
+                    moveForward(); // move the robot
+                    //IFS1bits.INT2IF = 1; // activating the flag for intrerupt INT2
+                    //IEC0bits.T2IE = 0; // disable interrupt for timer 2 to avoid change tail during the execution
+
+                    //IEC0bits.T2IE = 1; // enable interrupt for timer 2 
                     U1TXREG = fifo_command.msg[fifo_command.tail][0];
                     U1TXREG = fifo_command.msg[fifo_command.tail][1];
-
-                    
-                    // have to manage the time of the movement
-                    tmr_setup_period(TIMER2, fifo_command.msg[fifo_command.tail][1]); // setup the timer (consider the timer)
-                    if (tmr_wait_period(TIMER2))
-                    {
-                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    }
                 }
             }
             checkInterrupt = 0;
@@ -322,7 +332,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
         
         // circular increment of the tail
         data_values.fifo_write.tail = (data_values.fifo_write.tail + 1) % DIMFIFOWRITE;
-        
     }
 }
 
@@ -334,6 +343,39 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void)
     char c = U1RXREG;
     return_parser = parse_byte(&pstate, c);
 }
+
+void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
+{
+    IEC1bits.INT2IE = 0; // disable the interrupt
+    IFS1bits.INT2IF = 0; // clearing the flag
+    U1TXREG = 'A'; // send the character 'A
+    // set the timer for the wheels motor
+    tmr_setup_period(TIMER2, 200); // setup the timer (consider the timer)
+    IEC0bits.T2IE = 1; // enable the interrupt for the timer 2
+}
+
+
+void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void)
+{
+    // timer interrupt for the time of the motor
+    IFS0bits.T2IF = 0; // reset interrupt flag timer 2 (for INT2)
+
+    if (counter_for_int2 == (5 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
+    {
+        U1TXREG = 'T';
+        IEC0bits.T2IE = 0; // disable interrupt for timer 2 (for INT2)
+        // circular increment of the tail
+        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+        counter_for_int2 = 0; // reset the counter
+
+        //IFS1bits.INT2IF = 0; // clearing the flag for intrerupt INT2
+        IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
+    }
+    else {
+        counter_for_int2++;    
+    }
+}
+
 
 /* ################################################################
                             Scheduler functions
