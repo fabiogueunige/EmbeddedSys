@@ -2,7 +2,7 @@
 #define	CB_H
 
 #define DIMFIFOWRITE 500
-#define MAX_COMMANDS 10
+#define MAX_COMMANDS 5 // (not now: 10 commands + 1 for the head)
 
 typedef struct {
     int head;

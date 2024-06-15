@@ -13,7 +13,8 @@
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 #define WHNULL 0
-#define WHMOVESTD 7200
+#define WHMOVESTD 400
+#define WHMOVEFULL 7200
 
 #define FORWARD 1
 #define COUNT_ROTATION 2
@@ -23,9 +24,13 @@
 void pwmRemap();
 void pwmParametrization();
 void pwmConfig(); // standard confiuration
-void moveForward (int );
-void moveBack(int );
+void moveForward ( );
+void moveLeft();
+void moveRight();
+void moveBack();
 void whstop();
+
+void input_move(int );
 
 #ifdef	__cplusplus
 extern "C" {

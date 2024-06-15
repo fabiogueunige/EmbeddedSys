@@ -64,21 +64,21 @@ void pwmConfig()
     whstop();  
 }
 
-void moveForward (int wh2)
+void moveForward ()
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = wh2;
+    OC2R = WHMOVESTD;
     OC3R = WHNULL;
-    OC4R = wh2;
+    OC4R = WHMOVESTD;
 }
 
-void moveBack(int wh1)
+void moveBack()
 {
     // function to move back
-    OC1R = wh1;
+    OC1R = WHMOVESTD;
     OC2R = WHNULL;
-    OC3R = wh1;
+    OC3R = WHMOVESTD;
     OC4R = WHNULL;
 }
 
@@ -89,4 +89,43 @@ void whstop()
     OC2R = WHNULL;
     OC3R = WHNULL;
     OC4R = WHNULL;
+}
+
+void moveLeft()
+{
+    // function to move left
+    OC1R = WHNULL;
+    OC2R = WHNULL;
+    OC3R = WHNULL;
+    OC4R = WHMOVESTD;
+}
+
+void moveRight()
+{
+    // function to move right
+    OC1R = WHNULL;
+    OC2R = WHMOVESTD;
+    OC3R = WHNULL;
+    OC4R = WHNULL;
+}
+
+void input_move(int input)
+{
+    switch (input)
+    {
+        case FORWARD:
+            moveForward();
+            break;
+        case COUNT_ROTATION:
+            moveLeft();
+            break;
+        case CLOCKWISE_ROTATION:
+            moveRight();
+            break;
+        case BACKWARD:
+            moveBack();
+            break;
+        default:
+            whstop();
+    }
 }

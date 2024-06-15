@@ -155,8 +155,8 @@ int main(void)
     ###################################################################*/
     // Mapping battery (no need)
     // enable the infra-red sensor
-    TRISAbits.TRISA3 = 0; // set the enable pin as output
-    LATAbits.LATA3 = 1; //set the high value for enable the infra-red sensor
+    TRISBbits.TRISB9 = 0; // set the enable pin as output
+    LATBbits.LATB9 = 1; //set the high value for enable the infra-red sensor
     
     /* ################################################################
                         Peripheral configuration
@@ -174,10 +174,10 @@ int main(void)
     ###################################################################*/
     // select the scan pin
     AD1CSSLbits.CSS11 = 1; // Enable AN11 for scan (battery)
-    AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
+    AD1CSSLbits.CSS14 = 1; // Enable AN14 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
-    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value (controlla rapporto 15 e pin)
+    ANSELBbits.ANSB14 = 0x0001; // IR input as analog value (controlla rapporto 15 e pin)
     
     //MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
@@ -213,7 +213,23 @@ int main(void)
                 schedInfo[1].enable = 0; // disable the indicators
                 LATBbits.LATB8 = 0; // turn off the indicators
                 LATFbits.LATF1 = 0;
-                moveForward(WHMOVESTD); // move the wheels forward
+
+                // check the control buffer is not empty
+                if (fifo_command.tail != fifo_command.head)
+                {
+                    // move the wheels
+                    input_move(fifo_command.msg[fifo_command.tail][0]); // move the robot
+                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    U1TXREG = fifo_command.msg[fifo_command.tail][1];
+
+                    
+                    // have to manage the time of the movement
+                    tmr_setup_period(TIMER2, fifo_command.msg[fifo_command.tail][1]); // setup the timer (consider the timer)
+                    if (tmr_wait_period(TIMER2))
+                    {
+                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                    }
+                }
             }
             checkInterrupt = 0;
         }
@@ -226,20 +242,18 @@ int main(void)
             return_parser = NO_MESSAGE;
 
             // Saving the command in the circular buffer
-            if (fifo_command.head != fifo_command.tail -1)
+            if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
             {
                 fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
                 fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
-                U1TXREG = fifo_command.msg[fifo_command.head][0];
-                U1TXREG = fifo_command.msg[fifo_command.head][1];
-                if (fifo_command.head >= MAX_COMMANDS - 1)
-                {
-                    fifo_command.head = 0;
-                }
-                else
-                {
-                    fifo_command.head++;
-                }
+                
+
+                // circular increment of the head of the buffer
+                fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
+            }
+            else // buffer is full
+            {
+                U1TXREG = -1;
             }
 
             /*  CAMBIARE CON MAK 1 E 0
@@ -306,14 +320,9 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
         
-        if (data_values.fifo_write.tail >= DIMFIFOWRITE - 1)
-        {
-            data_values.fifo_write.tail = 0;
-        }
-        else
-        {
-            data_values.fifo_write.tail++;
-        }
+        // circular increment of the tail
+        data_values.fifo_write.tail = (data_values.fifo_write.tail + 1) % DIMFIFOWRITE;
+        
     }
 }
 
@@ -364,19 +373,15 @@ void taskPrintBattery (void* param)
     // write the values of the battery register
     for(int i = 0; buff[i] != 0; i++)
     {
-        if (cd->fifo_write.head != cd->fifo_write.tail -1)
+        // chech if the buffer is not full to write
+        if ((cd->fifo_write.head + 1) % DIMFIFOWRITE != cd->fifo_write.tail)
         {
             cd->fifo_write.msg[cd->fifo_write.head] = buff[i];
             
-            if (cd->fifo_write.head >= DIMFIFOWRITE - 1)
-            {
-                cd->fifo_write.head = 0;
-            }
-            else
-            {
-                cd->fifo_write.head++;
-            }
+            // circular increment of the head of the buffer
+            cd->fifo_write.head = (cd->fifo_write.head + 1) % DIMFIFOWRITE;
         }
+        // else to not lose the data (TO COMPLETE) 
     } 
     if (U1STAbits.UTXBF == 0)
     {
@@ -394,19 +399,15 @@ void taskPrintInfrared (void* param)
     // write the values of the infrared register
     for(int i = 0; buff[i] != 0; i++)
     {
-        if (cd->fifo_write.head != cd->fifo_write.tail -1)
+        // chech if the buffer is not full to write
+        if ((cd->fifo_write.head + 1) % DIMFIFOWRITE != cd->fifo_write.tail)
         {
             cd->fifo_write.msg[cd->fifo_write.head] = buff[i];
             
-            if (cd->fifo_write.head >= DIMFIFOWRITE - 1)
-            {
-                cd->fifo_write.head = 0;
-            }
-            else
-            {
-                cd->fifo_write.head++;
-            }
+            // circular increment of the head of the buffer
+            cd->fifo_write.head = (cd->fifo_write.head + 1) % DIMFIFOWRITE;
         }
+        // else to not lose the data (TO COMPLETE)
     }  
     if (U1STAbits.UTXBF == 0)
     {
