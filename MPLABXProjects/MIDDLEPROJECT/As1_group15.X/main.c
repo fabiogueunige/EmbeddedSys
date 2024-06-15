@@ -153,16 +153,19 @@ void printImu(float x, float y, float z)
     // copy the mean value comes from spi inside the circular buffer
     for(int i = 0; buff[i] != 0; i++)
     {
-        UBuffer[ind_buf_write] = buff[i];
+        if (ind_buff_write != ind_buff_read -1) 
+        {
+            UBuffer[ind_buf_write] = buff[i];
 
-        if (ind_buf_write >= DIMUB)
-        {
-            ind_buf_write = 0;
+            if (ind_buf_write == DIMUB -1)
+            {
+                ind_buf_write = 0;
+            }
+            else 
+            {
+                ind_buf_write ++;
+            }    
         }
-        else 
-        {
-            ind_buf_write++;
-        }    
     }   
     // to send the value trough UART trasmission
     if (U1STAbits.UTXBF == 0){  // check if the buffer is not full

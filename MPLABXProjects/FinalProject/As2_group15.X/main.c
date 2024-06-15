@@ -11,6 +11,7 @@
 
 
 #include "xc.h"
+#include <stdio.h>
 #include <math.h>
 #include "timer.h"
 #include "uartlib.h"
@@ -19,7 +20,6 @@
 #include "scheduler.h"
 #include "parser.h"
 #include "circularbufferlib.h"
-#include <stdio.h>
 
 /* ################################################################
                         Parameter Definition
@@ -98,34 +98,34 @@ int main(void)
     /* ################################################################
                         Defining all the tasks
     ###################################################################*/
-    // LEs A0 task config
+    // LED A0 task config
     schedInfo[0].n = 0;
     schedInfo[0].N = 1000;
     schedInfo[0].f = taskBlinkLedA0;
     schedInfo[0].params = NULL;
     schedInfo[0].enable = 1;
-    // indicator conig
+    // indicator task config
     schedInfo[1].n = -2;
     schedInfo[1].N = 1000;
     schedInfo[1].f = taskBlinkIndicators;
     schedInfo[1].params = NULL;
     schedInfo[1].enable = 1;
     
-    // ADC acquisition
+    // ADC acquisition task
     schedInfo[2].n = -5;
     schedInfo[2].N = 1;
     schedInfo[2].f = taskADCSensing;
     schedInfo[2].params = (void*)(&data_values);
     schedInfo[2].enable = 1;
     
-    // Print Battery
+    // Print Battery task
     schedInfo[3].n = -60;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
     schedInfo[3].enable = 0;
 
-    // Print Infrared
+    // Print Infrared task
     schedInfo[4].n = -10;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
@@ -137,7 +137,7 @@ int main(void)
     ###################################################################*/
     // LED A0 setup
     TRISAbits.TRISA0 = 0; // 0 = output, 1 = input 
-    LATAbits.LATA0 = 1; // value as low, to write (to read is port)
+    LATAbits.LATA0 = 1; // value as low, to write (to read the command is PORT)
     // indicatorts setup
     TRISBbits.TRISB8 = 0; // left indicator
     LATBbits.LATB8 = 1;
@@ -211,7 +211,7 @@ int main(void)
             else
             {
                 schedInfo[1].enable = 0; // disable the indicators
-                LATBbits.LATB8 = 0;
+                LATBbits.LATB8 = 0; // turn off the indicators
                 LATFbits.LATF1 = 0;
                 moveForward(WHMOVESTD); // move the wheels forward
             }
