@@ -38,9 +38,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // butt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
 
-void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void); // timer interrupt for the time of the motor
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // button interrupt to activate the mototr
-
 /* ################################################################
                         functions definition
 ###################################################################*/
@@ -49,6 +46,9 @@ void taskBlinkIndicators (void* ); // task for the indicators
 void taskADCSensing(void* ); // task for the ADC sensing
 void taskPrintBattery(void* ); // task for the battery print on circular buffer
 void taskPrintInfrared (void* ); // task for the infrared print on circular buffer
+
+// main functions
+void printAck (char ); // task for the ack print on circular buffer
 
 
 /* ################################################################
@@ -100,7 +100,7 @@ int main(void)
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
 
-    counter_for_int2 = 0; // counter for the interrupt 2 for timing
+    counter_for_int2 = -1; // counter for the interrupt 2 for timing
     
     /* ################################################################
                         Defining all the tasks
@@ -130,14 +130,14 @@ int main(void)
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 0;
+    schedInfo[3].enable = 1;
 
     // Print Infrared task
     schedInfo[4].n = -10;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 0;
+    schedInfo[4].enable = 1;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -156,6 +156,7 @@ int main(void)
     ###################################################################*/
     // Mapping INT1 to RE8 pin of left button
     RPINR0bits.INT1R = 0x58; // 0x58 is 88 in hexadecimal
+    TRISEbits.TRISE8 = 1; // set the pin button as input
     
     /* ################################################################
                         pin adc remap
@@ -219,85 +220,49 @@ int main(void)
     {
         if (checkInterrupt == 1) // to enter only when the button has been pressed to change status
         {
-            if (state == WAIT_FOR_START)
+        if (state == WAIT_FOR_START)
+        {
+            schedInfo[1].enable = 1; // enable the indicators
+            whstop(); // stop the wheels
+        }
+        else
+        {
+            schedInfo[1].enable = 0; // disable the indicators
+            LATBbits.LATB8 = 0; // turn off the indicators
+            LATFbits.LATF1 = 0; // turn off the indicators
+        }
+            //checkInterrupt = 0;
+        }
+
+        if (state == EXECUTE)
+        {
+            // check the control buffer is not empty
+            if (fifo_command.tail != fifo_command.head)
             {
-                schedInfo[1].enable = 1; // enable the indicators
-                whstop(); // stop the wheels
-                if (counter_for_int2 != 0)
+                if (counter_for_int2 == -1) // need to setup the timer
                 {
-                    counter_for_int2 = 0; // reset the counter
-                    fifo_command.msg[fifo_command.tail][0] = 0;
-                    fifo_command.msg[fifo_command.tail][1] = 0;
+                    input_move (fifo_command.msg[fifo_command.tail][0]);
+                    // set the timer for the wheels motor
+                    tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]); // setup the timer (consider the timer)
+                    counter_for_int2 = 0; // set the counter to 0
+                    
+                }
+
+                if (tmr_wait_period(TIMER4) == 1 && counter_for_int2 == 0) // wait for the end of the time of the motor
+                {
+                    //U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    //U1TXREG = fifo_command.msg[fifo_command.tail][1];
+                    // circular increment of the tail
+                    fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                    counter_for_int2 = -1; // reset the counter
                 }
             }
             else
             {
-                schedInfo[1].enable = 0; // disable the indicators
-                LATBbits.LATB8 = 0; // turn off the indicators
-                LATFbits.LATF1 = 0; // turn off the indicators
-
-                // check the control buffer is not empty
-                if (fifo_command.tail != fifo_command.head)
-                {
-                    input_move (fifo_command.msg[fifo_command.tail][0]);
-                    
-                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
-                    U1TXREG = fifo_command.msg[fifo_command.tail][1];
-
-                    /*if (tmr_wait_second(TIMER2, fifo_command.msg[fifo_command.tail][1]) == 1)
-                    {
-                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    }*/
-
-                    //PROBLEM WITH SECONDS
-                    if (counter_for_int2 == (fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
-                    {
-                        //whstop(); // stop the wheels
-                        // circular increment of the tail
-                        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                        counter_for_int2 = 0; // reset the counter
-                    }
-                    else {
-                        counter_for_int2++;
-                    }
-
-                    /* Qui i diversi tentativi                    // setup the timer
-                    // move the wheels
-                    // input_move(fifo_command.msg[fifo_command.tail][0]); // move the robot
-                    // moveForward(); // move the robot
-                    //IFS1bits.INT2IF = 1; // activating the flag for intrerupt INT2
-                    //IEC0bits.T2IE = 0; // disable interrupt for timer 2 to avoid change tail during the execution
-
-                    //IEC0bits.T2IE = 1; // enable interrupt for timer 2 
-
-                    if (counter_for_int2 == -1) // if the counter is -1 (first time)
-                    {
-                        // set the timer for the wheels motor
-                        tmr_setup_period(TIMER2, 200);
-                        counter_for_int2 = 0; // set the 
-                    }
-                    if (tmr_wait_period(TIMER2) == 1) // if the timer has expired (200ms)
-                    {
-                        if (counter_for_int2 == (5 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
-                        {
-                            // circular increment of the tail
-                            fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                            counter_for_int2 = -1; // reset the counter
-                        }
-                        else {
-                            tmr_setup_period(TIMER2, 200);
-                            counter_for_int2++;
-                        }
-                    } 
-                    */  
-                }
-                else {
-                    whstop(); // stop the wheels
-                }
+                whstop(); // stop the wheels
             }
-            checkInterrupt = 0;
         }
-        
+      
         scheduler(schedInfo, MAX_TASKS);
         
         // check if the parser has received a new message
@@ -308,26 +273,20 @@ int main(void)
             // Saving the command in the circular buffer
             if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
             {
+                // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
                 fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
                 fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                 
+                printAck ('0'); 
 
                 // circular increment of the head of the buffer
                 fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
             }
             else // buffer is full
             {
-                U1TXREG = -1;
+                // WRITE HERE THE ACK FOR BUFFER FULL 
+                printAck ('1'); 
             }
-
-            /*  CAMBIARE CON MAK 1 E 0
-            for (int i = 0; pstate.msg_payload[i] != '\0'; i++)
-            { // modificare on MAG0 e MAG1
-                while(U1STAbits.UTXBF != 0); // wait for the buffer to be empty (to write the message
-                U1TXREG = pstate.msg_payload[i];
-            }*/
-
-
         }
          
 
@@ -375,7 +334,7 @@ void __attribute__((interrupt, auto_psv)) _INT1Interrupt(void){
     IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
     
     // activating the interrupt
-    tmr_setup_period(TIMER1, 50); // setup the timer (consider the timer)
+    tmr_setup_period(TIMER1, 10); // setup the timer (consider the timer)
     IEC0bits.T1IE = 1;
 }
 
@@ -385,58 +344,27 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IFS0bits.T1IF = 0; // reset interrupt flag
     IEC0bits.T1IE = 0;
     T1CONbits.TON = 0; // stop the timer
-    
-    if (state == WAIT_FOR_START)
-    {
-        state = EXECUTE;
-    }
-    else 
-    {
-        state = WAIT_FOR_START;
-    }
-    checkInterrupt = 1;
+
+    if (PORTEbits.RE8 == 1) // if the button is still pressed
+    { // if not it is a contact bounce
+        if (state == WAIT_FOR_START)
+        {
+            state = EXECUTE;
+        }
+        else 
+        {
+            state = WAIT_FOR_START;
+        }
+        checkInterrupt = 1;
+    } 
     // Reactivating the button interrupt
     IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
     IEC1bits.INT1IE = 1; // enable the interrupt
 }
-/*
-// interrupt associated to the motor
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
-{
-    IEC1bits.INT2IE = 0; // disable the interrupt
-    IFS1bits.INT2IF = 0; // clearing the flag
-    U1TXREG = 'A'; // send the character 'A
-    // set the timer for the wheels motor
-    tmr_setup_period(TIMER2, 200); // setup the timer (consider the timer)
-    IEC0bits.T2IE = 1; // enable the interrupt for the timer 2
-}
-
-void __attribute__((__interrupt__, __auto_psv__)) _T2Interrupt(void)
-{
-    // timer interrupt for the time of the motor
-    IFS0bits.T2IF = 0; // reset interrupt flag timer 2 (for INT2)
-
-    if (counter_for_int2 == (5 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
-    {
-        U1TXREG = 'T';
-        IEC0bits.T2IE = 0; // disable interrupt for timer 2 (for INT2)
-        T2CONbits.TON = 0; // stop the timer
-        // circular increment of the tail
-        fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-        counter_for_int2 = 0; // reset the counter
-
-        IFS1bits.INT2IF = 0; // clearing the flag for intrerupt INT2
-        IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
-    }
-    else {
-        counter_for_int2++;    
-    }
-}
-*/
 
 /* ################################################################
                             Scheduler functions
-    ###################################################################*/
+###################################################################*/
 
 void taskBlinkLedA0 (void* param)
 {
@@ -514,3 +442,38 @@ void taskPrintInfrared (void* param)
     }
 }
 
+/* ################################################################
+                            Main functions
+###################################################################*/
+
+void printAck (char ack)
+{
+    char buff[9];
+    buff[0] = '$'; // start of the message
+    buff[1] = 'M'; // start of the message
+    buff[2] = 'A'; // start of the message
+    buff[3] = 'C'; // start of the message
+    buff[4] = 'K'; // start of the message
+    buff[5] = ','; // start of the message
+    buff[6] = ack; // possible variable character
+    buff[7] = '*'; // end of the message
+    buff[8] = '\0'; // null character 
+
+    for(int i = 0; buff[i] != 0; i++)
+    {
+        // chech if the buffer is not full to write
+        if ((data_values.fifo_write.head + 1) % DIMFIFOWRITE != data_values.fifo_write.tail)
+        {
+            data_values.fifo_write.msg[data_values.fifo_write.head] = buff[i];
+            
+            // circular increment of the head of the buffer
+            data_values.fifo_write.head = (data_values.fifo_write.head + 1) % DIMFIFOWRITE;
+        }
+        // else to not lose the data (TO COMPLETE)
+    }  
+    if (U1STAbits.UTXBF == 0)
+    {
+        IFS0bits.U1TXIF = 1;
+    }
+
+}
