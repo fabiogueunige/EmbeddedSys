@@ -25,7 +25,7 @@
                         Parameter Definition
     ###################################################################*/
 
-#define MAX_TASKS 5
+#define MAX_TASKS 6
 #define WAIT_FOR_START 0
 #define EXECUTE 1
 
@@ -59,9 +59,11 @@ void printAck (char ); // task for the ack print on circular buffer
 typedef struct {
     float battery_data; // battery value
     float infraRed_data; // Infrared value
+    int pwm_data; // pwm_data (fom 1 to 4)
+    int time;
     fifo fifo_write; // circular buffer for trasmission
+    fifo_pwm fifo_command; // circular buffer for the commands
 } data;
-
 
 heartbeat schedInfo[MAX_TASKS]; // task of the scheduler
 int state; // state of the state machine
@@ -98,7 +100,7 @@ int main(void)
 	pstate.index_type = 0; // initial index for the type of parser
 	pstate.index_payload = 0; // initial index for the payload of parser
     return_parser = 0; // initial value for the parser
-    fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
+    fifo_pwm_init(data_values.fifo_command); // initialization of the circular buffer for the commands
     char pwm_type[] = "PCCMD"; // correct value for the pwm type 
 
     counter_for_int2 = -1; // counter for the interrupt 2 for timing
@@ -139,6 +141,14 @@ int main(void)
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
     schedInfo[4].enable = 1;
+
+    // Pwm task
+    schedInfo[5].n = -3;
+    schedInfo[5].N = 1;
+    schedInfo[5].f = taskPwm;
+    schedInfo[5].params = (void*)(&data_values);
+    schedInfo[5].enable = 1;
+
 
     /* ################################################################
                         pin remap and setup of the led
@@ -246,7 +256,8 @@ int main(void)
             {
                 if (counter_for_int2 == -1) // need to setup the timer
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0]);
+                    data_values.pwm_data = fifo_command.msg[fifo_command.tail][0]; // set the pwm data
+                    //input_move (fifo_command.msg[fifo_command.tail][0]);
                     if (fifo_command.msg[fifo_command.tail][1] <= MAX_TIME)
                     {
                         tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
@@ -287,13 +298,13 @@ int main(void)
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
                     // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
-                    fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
-                    fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
+                    data_values.fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
+                    data_values.fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
                     printAck ('1'); 
 
                     // circular increment of the head of the buffer
-                    fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
+                    data_values.fifo_command.head = (data_values.fifo_command.head + 1) % MAX_COMMANDS;
                 }
                 else // buffer is full
                 {
@@ -468,6 +479,23 @@ void taskPrintInfrared (void* param)
     if (U1STAbits.UTXBF == 0)
     {
         IFS0bits.U1TXIF = 1;
+    }
+}
+
+void taskPwm (void* param)
+{
+    // TODO: gestire tutti i casi in cui viene usata la pwm e metterli dentro a questo task
+    data* cd = (data*) param;
+    input_move (cd->fifo_command.msg[cd->fifo_command.tail][0]);
+    cd->time ++; // increment the timer
+    if (cd->time == cd->fifo_command.msg[cd->fifo_command.tail][1])
+    {
+        // the time was passed, update the tail
+        if (fifo_command.tail != fifo_command.head) // if the buffer is not empty
+        {
+            fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+            cd->time = 0; // reset the timer
+        }
     }
 }
 
