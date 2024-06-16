@@ -249,7 +249,15 @@ int main(void)
                     input_move (fifo_command.msg[fifo_command.tail][0]);
                     if (fifo_command.msg[fifo_command.tail][1] <= MAX_TIME)
                     {
-                        tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
+                        if (fifo_command.msg[fifo_command.tail][1] == 0)
+                        {
+                            // probably error, so action ends immediately
+                            IFS1bits.T4IF = 1; // set the flag to zero
+                        } else 
+                        {
+                            // setup the timer (consider the timer
+                            tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
+                        }
                     }
                     else 
                     {
@@ -286,10 +294,11 @@ int main(void)
                 // Saving the command in the circular buffer
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
-                    // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
+                    // extract the values
                     fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
                     fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
+                    // print there is more space
                     printAck ('1'); 
 
                     // circular increment of the head of the buffer
@@ -297,7 +306,6 @@ int main(void)
                 }
                 else // buffer is full
                 {
-                    // WRITE HERE THE ACK FOR BUFFER FULL 
                     printAck ('0'); 
                 }
             }

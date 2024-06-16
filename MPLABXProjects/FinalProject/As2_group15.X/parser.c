@@ -63,8 +63,10 @@ int extract_integer(const char* str) {
 		i++;
 	}
 	while (str[i] != ',' && str[i] != '\0') {
-		number *= 10; // multiply the current number by 10;
-		number += str[i] - '0'; // converting character to decimal number
+        if (str[i] >= '0' && str[i] <= '9') {
+            number *= 10; // multiply the current number by 10;
+		    number += str[i] - '0'; // converting character to decimal number
+        }
 		i++;
 	}
 	return sign*number;
