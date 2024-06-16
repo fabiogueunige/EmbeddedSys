@@ -19,6 +19,7 @@
 #define TIMER5 5
 
 #define FCY 72000000
+#define MAX_TIME 200
 
 
 

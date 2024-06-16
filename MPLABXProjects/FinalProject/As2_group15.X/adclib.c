@@ -52,8 +52,10 @@ float bit2volt (float value){
     return value_volt;
 }
 
-float volt2cm(float value){
-    float cm;
+float volt2cm(float val){
+    float cm, value;
+
+    value = bit2volt(val);
     
     cm = 2.34 - (4.74 * value) + (4.06 * pow(value,2)) - (1.60 * pow(value,3)) + (0.24 * pow(value,4));
     cm *= 100.0;
@@ -62,7 +64,7 @@ float volt2cm(float value){
 
 // ATTENZIONE!!!!
 /*
- L'idea migliore usando ADC è di salvare i valori dei pin dell'adc non appena 
+ L'idea migliore usando ADC ï¿½ di salvare i valori dei pin dell'adc non appena 
  * il "done" diventa 1 all'interno di un buffer per evitare che vengano sovrascritti da 
  * nuovi valori e perdere i precedenti
  */

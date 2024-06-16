@@ -68,9 +68,9 @@ void moveForward (int wh2)
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = wh2;
+    OC2R = -wh2;
     OC3R = WHNULL;
-    OC4R = wh2;
+    OC4R = -wh2;
 }
 
 void moveBack(int wh1)

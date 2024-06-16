@@ -76,9 +76,9 @@ void moveForward ()
 void moveBack()
 {
     // function to move back
-    OC1R = WHMOVESTD;
+    OC1R = -WHMOVESTD;
     OC2R = WHNULL;
-    OC3R = WHMOVESTD;
+    OC3R = -WHMOVESTD;
     OC4R = WHNULL;
 }
 

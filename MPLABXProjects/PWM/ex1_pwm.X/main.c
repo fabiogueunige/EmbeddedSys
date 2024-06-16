@@ -55,7 +55,7 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     {
         if (bttcounter == 0)
         {
-            moveForward (WHMOVESTD);
+            moveBack (WHMOVESTD);
             bttcounter ++;
         }
         else 

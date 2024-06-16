@@ -38,6 +38,8 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // butt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
 
+void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // brake interrupt
+
 /* ################################################################
                         functions definition
 ###################################################################*/
@@ -63,7 +65,6 @@ typedef struct {
 
 heartbeat schedInfo[MAX_TASKS]; // task of the scheduler
 int state; // state of the state machine
-int checkInterrupt; // boolean to know if button pressed
 int return_parser; // return value of the parser
 
 data data_values; // data structure for the values of the sensors
@@ -89,7 +90,6 @@ int main(void)
                             State Initialization
     ###################################################################*/
     state = WAIT_FOR_START; // initial state
-    checkInterrupt = 0; // initial value for the interrupt
     data_values.battery_data = 0.0; // initial value for the battery
     data_values.infraRed_data = 0.0; // initial value for the infrared
     fifo_init(data_values.fifo_write); // initialization of the circular buffer
@@ -99,6 +99,7 @@ int main(void)
 	pstate.index_payload = 0; // initial index for the payload of parser
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
+    char pwm_type[] = "PCCMD"; // correct value for the pwm type 
 
     counter_for_int2 = -1; // counter for the interrupt 2 for timing
     
@@ -150,6 +151,18 @@ int main(void)
     LATBbits.LATB8 = 1;
     TRISFbits.TRISF1 = 0; // right indicator
     LATFbits.LATF1 = 1;
+
+    // brakes led setup
+    TRISFbits.TRISF0 = 0; // set brakes led as output
+    LATFbits.LATF0 = 0; // set the brakes led as low
+
+    // low intensity lights setup
+    TRISGbits.TRISG1 = 0; // set the low intensity lights as output
+    LATGbits.LATG1 = 1; // set the low intensity lights as high
+
+    // beam headlights setup
+    TRISAbits.TRISA7 = 0; // set the beam headlights as output
+    LATAbits.LATA7 = 1; // set the beam headlights as high
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -207,51 +220,49 @@ int main(void)
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
     
-    /*
-    // Interrupt for the motors pwm
+    // Interrupt for emergency stop motors pwm
     IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
     IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
-    // Interrupt for the timer 2 to respect the timing of the motors
-    IFS0bits.T2IF = 0; // reset interrupt flag timer 2 (for INT2)
-    IEC0bits.T2IE = 0; // enable interrupt for timer 2 (for INT2)
-    */
+    
 
     while (1)
     {
-        if (checkInterrupt == 1) // to enter only when the button has been pressed to change status
-        {
         if (state == WAIT_FOR_START)
         {
-            schedInfo[1].enable = 1; // enable the indicators
             whstop(); // stop the wheels
+            schedInfo[1].enable = 1; // enable the indicators
+            if (counter_for_int2 == 0 && fifo_command.tail != fifo_command.head)
+            {
+                counter_for_int2 = -1; // reset the counter
+                fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+            }
         }
-        else
-        {
-            schedInfo[1].enable = 0; // disable the indicators
-            LATBbits.LATB8 = 0; // turn off the indicators
-            LATFbits.LATF1 = 0; // turn off the indicators
-        }
-            //checkInterrupt = 0;
-        }
-
         if (state == EXECUTE)
         {
+            schedInfo[1].enable = 0; // disable the indicators
+            
             // check the control buffer is not empty
             if (fifo_command.tail != fifo_command.head)
             {
                 if (counter_for_int2 == -1) // need to setup the timer
                 {
                     input_move (fifo_command.msg[fifo_command.tail][0]);
+                    if (fifo_command.msg[fifo_command.tail][1] <= MAX_TIME)
+                    {
+                        tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
+                    }
+                    else 
+                    {
+                        // setup the timer (consider the timer)
+                        tmr_setup_period(TIMER4, MAX_TIME); // setup the timer (consider the timer)
+                    }
                     // set the timer for the wheels motor
-                    tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]); // setup the timer (consider the timer)
-                    counter_for_int2 = 0; // set the counter to 0
-                    
-                }
+                     
+                    counter_for_int2 = 0; // set the counter to 0                
+                }      
 
                 if (tmr_wait_period(TIMER4) == 1 && counter_for_int2 == 0) // wait for the end of the time of the motor
                 {
-                    //U1TXREG = fifo_command.msg[fifo_command.tail][0];
-                    //U1TXREG = fifo_command.msg[fifo_command.tail][1];
                     // circular increment of the tail
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
                     counter_for_int2 = -1; // reset the counter
@@ -262,6 +273,7 @@ int main(void)
                 whstop(); // stop the wheels
             }
         }
+        
       
         scheduler(schedInfo, MAX_TASKS);
         
@@ -269,33 +281,33 @@ int main(void)
         if (return_parser == NEW_MESSAGE)
         {
             return_parser = NO_MESSAGE;
-
-            // Saving the command in the circular buffer
-            if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
+            if (strcmp(pstate.msg_type, pwm_type) == 0)
             {
-                // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
-                fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
-                fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
-                
-                printAck ('0'); 
+                // Saving the command in the circular buffer
+                if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
+                {
+                    // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
+                    fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
+                    fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
+                    
+                    printAck ('1'); 
 
-                // circular increment of the head of the buffer
-                fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
-            }
-            else // buffer is full
-            {
-                // WRITE HERE THE ACK FOR BUFFER FULL 
-                printAck ('1'); 
+                    // circular increment of the head of the buffer
+                    fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
+                }
+                else // buffer is full
+                {
+                    // WRITE HERE THE ACK FOR BUFFER FULL 
+                    printAck ('0'); 
+                }
             }
         }
-         
-
         
-        while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb
+        while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
     }
-    
     return 0;
 }
+
 
 /* ################################################################
                             Interrupt functions
@@ -350,16 +362,26 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
         if (state == WAIT_FOR_START)
         {
             state = EXECUTE;
+            LATBbits.LATB8 = 0; // turn off the indicators
+            LATFbits.LATF1 = 0; // turn off the indicators
         }
         else 
         {
             state = WAIT_FOR_START;
         }
-        checkInterrupt = 1;
     } 
     // Reactivating the button interrupt
     IFS1bits.INT1IF = 0; //put to zero the flag of the interrupt
     IEC1bits.INT1IE = 1; // enable the interrupt
+}
+
+// Emergency interrupt for the brake
+void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
+{
+    // interrupt for the brake
+    IFS1bits.INT2IF = 0; // reset interrupt flag
+    // IEC1bits.INT2IE = 0; // disable interrupt (only for new state)
+    whstop(); // stop the wheels
 }
 
 /* ################################################################
@@ -386,8 +408,15 @@ void taskADCSensing(void* param)
     int potBitsBatt = ADC1BUF0;
     int potBitsIr = ADC1BUF1;
     cd->battery_data = battery_conversion((float) potBitsBatt); 
-    float batt_data = bit2volt((float) potBitsIr);
-    cd->infraRed_data = volt2cm(batt_data);
+    cd->infraRed_data = volt2cm((float) potBitsIr);
+
+    if(cd->infraRed_data < EMERGENCY_STOP){
+        IFS1bits.INT2IF = 1; // ativate the flag for he emergency brake
+        LATFbits.LATF0 = 1; // set the brakes led as high
+    }else
+    {
+        LATFbits.LATF0 = 0; // set the brakes led as low
+    }
 }
 
 void taskPrintBattery (void* param)
@@ -395,7 +424,7 @@ void taskPrintBattery (void* param)
     data* cd = (data*) param;
     char buff[20];
 
-    sprintf(buff,"$MBATT,%.3f*", cd->battery_data); 
+    sprintf(buff,"$MBATT,%.2f*", cd->battery_data); 
     
     // write the values of the battery register
     for(int i = 0; buff[i] != 0; i++)
@@ -421,7 +450,7 @@ void taskPrintInfrared (void* param)
     data* cd = (data*) param;
     char buff[20];
 
-    sprintf(buff,"$MDIST,%.3f*", cd->infraRed_data); 
+    sprintf(buff,"$MDIST,%.0f*", cd->infraRed_data); 
     
     // write the values of the infrared register
     for(int i = 0; buff[i] != 0; i++)
