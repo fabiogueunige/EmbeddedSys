@@ -244,21 +244,22 @@ int main(void)
                     U1TXREG = fifo_command.msg[fifo_command.tail][0];
                     U1TXREG = fifo_command.msg[fifo_command.tail][1];
 
-                    if (tmr_wait_second(TIMER2, fifo_command.msg[fifo_command.tail][1]) == 1)
+                    /*if (tmr_wait_second(TIMER2, fifo_command.msg[fifo_command.tail][1]) == 1)
                     {
                         fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    }
+                    }*/
 
-                    /*  PROBLEM WITH SECONDS
-                    if (counter_for_int2 == (1000 * fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
+                    //PROBLEM WITH SECONDS
+                    if (counter_for_int2 == (fifo_command.msg[fifo_command.tail][1]) - 1) // 5 times the time of the motor
                     {
+                        //whstop(); // stop the wheels
                         // circular increment of the tail
                         fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
                         counter_for_int2 = 0; // reset the counter
                     }
                     else {
                         counter_for_int2++;
-                    }*/
+                    }
 
                     /* Qui i diversi tentativi                    // setup the timer
                     // move the wheels
