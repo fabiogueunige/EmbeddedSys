@@ -48,6 +48,7 @@ void taskBlinkIndicators (void* ); // task for the indicators
 void taskADCSensing(void* ); // task for the ADC sensing
 void taskPrintBattery(void* ); // task for the battery print on circular buffer
 void taskPrintInfrared (void* ); // task for the infrared print on circular buffer
+void taskPwm (void* ); // task for the pwm
 
 // main functions
 void printAck (char ); // task for the ack print on circular buffer
@@ -133,21 +134,21 @@ int main(void)
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 1;
+    schedInfo[3].enable = 0;
 
     // Print Infrared task
     schedInfo[4].n = -10;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 1;
+    schedInfo[4].enable = 0;
 
     // Pwm task
     schedInfo[5].n = -3;
     schedInfo[5].N = 1;
     schedInfo[5].f = taskPwm;
     schedInfo[5].params = (void*)(&data_values);
-    schedInfo[5].enable = 1;
+    schedInfo[5].enable = 0;
 
 
     /* ################################################################
@@ -172,7 +173,7 @@ int main(void)
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
-    LATAbits.LATA7 = 1; // set the beam headlights as high
+    LATAbits.LATA7 = 0; // set the beam headlights as high
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -241,16 +242,21 @@ int main(void)
         {
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
+            schedInfo[5].enable = 0; // enable the pwm task
+
+
+            /*
             if (counter_for_int2 == 0 && fifo_command.tail != fifo_command.head)
             {
                 counter_for_int2 = -1; // reset the counter
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-            }
+            }*/
         }
         if (state == EXECUTE)
         {
             schedInfo[1].enable = 0; // disable the indicators
-            
+            schedInfo[5].enable = 1; // enable the pwm task
+    
             // check the control buffer is not empty
             if (fifo_command.tail != fifo_command.head)
             {
@@ -270,14 +276,8 @@ int main(void)
                     // set the timer for the wheels motor
                      
                     counter_for_int2 = 0; // set the counter to 0                
-                }      
-
-                if (tmr_wait_period(TIMER4) == 1 && counter_for_int2 == 0) // wait for the end of the time of the motor
-                {
-                    // circular increment of the tail
-                    fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    counter_for_int2 = -1; // reset the counter
                 }
+
             }
             else
             {
@@ -295,7 +295,7 @@ int main(void)
             if (strcmp(pstate.msg_type, pwm_type) == 0)
             {
                 // Saving the command in the circular buffer
-                if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
+                if ((data_values.fifo_command.head + 1) % MAX_COMMANDS != data_values.fifo_command.tail) // if the buffer is not full
                 {
                     // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
                     data_values.fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
@@ -484,19 +484,26 @@ void taskPrintInfrared (void* param)
 
 void taskPwm (void* param)
 {
-    // TODO: gestire tutti i casi in cui viene usata la pwm e metterli dentro a questo task
     data* cd = (data*) param;
     input_move (cd->fifo_command.msg[cd->fifo_command.tail][0]);
-    cd->time ++; // increment the timer
     if (cd->time == cd->fifo_command.msg[cd->fifo_command.tail][1])
     {
         // the time was passed, update the tail
-        if (fifo_command.tail != fifo_command.head) // if the buffer is not empty
+        if (cd->fifo_command.tail != cd->fifo_command.head) // if the buffer is not empty
         {
-            fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+            cd->fifo_command.tail = (cd->fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
             cd->time = 0; // reset the timer
         }
+        else
+        {
+            // buffer is empty
+            whstop(); // stop the wheels
+        }
     }
+    cd->time ++; // increment the timer
+    U1TXREG = cd->time; // send the ack
+    U1TXREG = cd->fifo_command.msg[cd->fifo_command.tail][1]; // send the ack
+
 }
 
 /* ################################################################

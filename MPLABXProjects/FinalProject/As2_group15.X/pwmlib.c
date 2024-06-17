@@ -37,23 +37,25 @@ void pwmRemap()
 void pwmParametrization()
 {
     // selct for clock for the output compare
-    OC1CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
-    OC2CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
-    OC3CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
-    OC4CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
+    OC1CON1bits.OCTSEL = 0b111; // select the input clock source for the OC1module 
+    OC2CON1bits.OCTSEL = 0b111; // select the input clock source for the OC1module 
+    OC3CON1bits.OCTSEL = 0b111; // select the input clock source for the OC1module 
+    OC4CON1bits.OCTSEL = 0b111; // select the input clock source for the OC1module 
      
     // as peripheral clock that is the same to microcontroller
-    OC1CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
-    OC2CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
-    OC3CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
-    OC4CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
+    OC1CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxR)
+    OC2CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxR)
+    OC3CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxR)
+    OC4CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxR) OCxRS???
 
     
-    // set the peiod of the pwm at 10khz dividing fcy/10
-    OC1RS = WHMOVESTD;
-    OC2RS = WHMOVESTD;
-    OC3RS = WHMOVESTD;
-    OC4RS = WHMOVESTD;
+    // set the peiod of the pwm at 10khz dividing by 7200
+    OC1RS = 7200;
+    OC2RS = 7200;
+    OC3RS = 7200;
+    OC4RS = 7200;
+
+    // if I want top use    a duty cycle percventage i ùùI can set (7200/100) * dutycycle = OC1R (priary register)
 }
 
 void pwmConfig()
