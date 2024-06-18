@@ -50,10 +50,10 @@ void pwmParametrization()
 
     
     // set the peiod of the pwm at 10khz dividing fcy/10
-    OC1RS = WHMOVESTD;
-    OC2RS = WHMOVESTD;
-    OC3RS = WHMOVESTD;
-    OC4RS = WHMOVESTD;
+    OC1RS = PERIOD;
+    OC2RS = PERIOD;
+    OC3RS = PERIOD;
+    OC4RS = PERIOD;
 }
 
 void pwmConfig()
@@ -68,17 +68,17 @@ void moveForward ()
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = DUTY_CYCLE * PERIOD /100;;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = DUTY_CYCLE * PERIOD /100;;
 }
 
 void moveBack()
 {
     // function to move back
-    OC1R = -WHMOVESTD;
+    OC1R = -DUTY_CYCLE * PERIOD /100;;
     OC2R = WHNULL;
-    OC3R = -WHMOVESTD;
+    OC3R = -DUTY_CYCLE * PERIOD /100;;
     OC4R = WHNULL;
 }
 
@@ -97,14 +97,14 @@ void moveLeft()
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = DUTY_CYCLE * PERIOD /100;;
 }
 
 void moveRight()
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = DUTY_CYCLE * PERIOD /100;;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }

@@ -162,7 +162,7 @@ int main(void)
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
-    LATAbits.LATA7 = 1; // set the beam headlights as high
+    LATAbits.LATA7 = 0; // set the beam headlights as low
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -241,6 +241,7 @@ int main(void)
         }
         if (state == EXECUTE)
         {
+            LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
             
             // check the control buffer is not empty

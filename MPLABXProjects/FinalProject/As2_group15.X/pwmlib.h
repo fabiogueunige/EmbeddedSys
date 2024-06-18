@@ -13,10 +13,11 @@
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 #define WHNULL 0
-#define WHMOVESTD 400
-#define WHMOVEFULL 7200
+#define PERIOD 7200
+#define DUTY_CYCLE 60
 
-#define EMERGENCY_STOP 100
+
+#define EMERGENCY_STOP 50
 #define PRE_EMERGENCY_STOP 50
 
 #define FORWARD 1
