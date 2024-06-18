@@ -127,14 +127,14 @@ int main(void)
     schedInfo[2].enable = 1;
     
     // Print Battery task
-    schedInfo[3].n = -60;
+    schedInfo[3].n = -52;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 0;
+    schedInfo[3].enable = 1;
 
     // Print Infrared task
-    schedInfo[4].n = -10;
+    schedInfo[4].n = -2;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
@@ -176,8 +176,8 @@ int main(void)
     ###################################################################*/
     // Mapping battery (no need)
     // enable the infra-red sensor
-    TRISBbits.TRISB9 = 0; // set the enable pin as output
-    LATBbits.LATB9 = 1; //set the high value for enable the infra-red sensor
+    TRISAbits.TRISA3 = 0; // set the enable pin as output
+    LATAbits.LATA3 = 1; //set the high value for enable the infra-red sensor
     
     /* ################################################################
                         Peripheral configuration
@@ -194,10 +194,10 @@ int main(void)
     ###################################################################*/
     // select the scan pin
     AD1CSSLbits.CSS11 = 1; // Enable AN11 for scan (battery)
-    AD1CSSLbits.CSS14 = 1; // Enable AN14 for scan (infra-red)
+    AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
-    ANSELBbits.ANSB14 = 0x0001; // IR input as analog value (controlla rapporto 15 e pin)
+    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value (usually AN14 e B9 or the other does't work)
     
     //MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
@@ -237,7 +237,6 @@ int main(void)
             {
                 counter_for_timer = -1; // reset the counter for the timer
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                U1TXREG = 'W'; 
             }
         }
         if (state == EXECUTE)
@@ -253,7 +252,6 @@ int main(void)
                     counter_for_timer = 0; // set the counter to 0   
                     data_values.check_slow_down = 0; // reset the check for the slow down    
                     LATFbits.LATF0 = 0; // set the brakes led as low        
-                    U1TXREG = 'I'; 
                 }      
 
                 if (counter_for_timer == fifo_command.msg[fifo_command.tail][1]) // wait for the end of the time of the motor
@@ -261,7 +259,6 @@ int main(void)
                     // circular increment of the tail
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
                     counter_for_timer = -1; // reset the counter
-                    U1TXREG = 'E'; 
                 }
             }
             else
@@ -272,6 +269,22 @@ int main(void)
         
       
         scheduler(schedInfo, MAX_TASKS);
+        
+        /*if((data_values.infraRed_data <= PRE_EMERGENCY_STOP && data_values.infraRed_data > EMERGENCY_STOP) && data_values.check_slow_down == 0)
+        {
+            data_values.check_slow_down = 1;
+            // slowing down
+            input_move(fifo_command.msg[fifo_command.tail][0], SLOW);
+            U1TXREG = 'P'; 
+        }
+        if (data_values.infraRed_data > PRE_EMERGENCY_STOP && data_values.check_slow_down == 0)
+        {
+            data_values.check_slow_down = 1;
+            // reaccelerating
+            input_move(fifo_command.msg[fifo_command.tail][0], FAST);
+            LATFbits.LATF0 = 1; // set the brakes led as high
+            U1TXREG = 'F'; 
+        }*/
         
         // check if the parser has received a new message
         if (return_parser == NEW_MESSAGE)
@@ -407,24 +420,7 @@ void taskADCSensing(void* param)
         whstop(); // stop the wheels
         cd->check_slow_down = 1;
         LATFbits.LATF0 = 1; // set the brakes led as high
-        U1TXREG = 'S'; 
     }
-    /*
-    if((cd->infraRed_data <= PRE_EMERGENCY_STOP && cd->infraRed_data > EMERGENCY_STOP) && cd->check_slow_down == 0)
-    {
-        cd->check_slow_down = 1;
-        // slowing down
-        input_move(fifo_command.msg[fifo_command.tail][0], SLOW);
-        U1RXREG = 'P'; 
-    }
-    if (cd->infraRed_data > PRE_EMERGENCY_STOP && cd->check_slow_down == 0)
-    {
-        cd->check_slow_down = 1;
-        // reaccelerating
-        input_move(fifo_command.msg[fifo_command.tail][0], FAST);
-        LATFbits.LATF0 = 1; // set the brakes led as high
-        U1RXREG = 'F'; 
-    }*/
 }
 
 void taskPrintBattery (void* param)
