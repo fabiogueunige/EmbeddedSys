@@ -124,7 +124,7 @@ int main(void)
     schedInfo[2].enable = 1;
     
     // Print Battery task
-    schedInfo[3].n = -60;
+    schedInfo[3].n = -55;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
@@ -245,8 +245,7 @@ int main(void)
             {
                 if (counter_for_timer == -1) // need to setup the timer (so the counter)
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0], WH_FAST);      
-                    //input_move (fifo_command.msg[fifo_command.tail][0]);               
+                    input_move (fifo_command.msg[fifo_command.tail][0], WH_FAST);                 
                     counter_for_timer = 0; // set the counter to 0   
                     data_values.check_slow_down = 0; // reset the check for the slow down    
                     LATFbits.LATF0 = 0; // set the brakes led as low        
@@ -330,7 +329,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     //set the flag to zero
     IFS0bits.U1TXIF = 0;
     
-    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
+    if((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circular buffer into the uart1 register
         
