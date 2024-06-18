@@ -1,6 +1,6 @@
 /*
  * File:   pwmlib.c
- * Author: fabio
+ * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
  *
  * Created on 27 maggio 2024, 12.37
  */
@@ -48,7 +48,6 @@ void pwmParametrization()
     OC3CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
     OC4CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
 
-    
     // set the peiod of the pwm at 10khz dividing fcy/10
     OC1RS = PERIOD;
     OC2RS = PERIOD;
@@ -111,14 +110,6 @@ void moveRight(int velocity)
 
 void input_move(int input, int mode)
 {
-    if (mode == FAST)
-    {
-        mode = (DUTY_CYCLE_FAST / 100) * PERIOD;
-    }
-    else 
-    {
-        mode = (DUTY_CYCLE_SLOW / 100) * PERIOD;
-    }
     switch (input)
     {
         case FORWARD:
