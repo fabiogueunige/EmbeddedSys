@@ -60,6 +60,7 @@ typedef struct {
     float battery_data; // battery value
     float infraRed_data; // Infrared value
     fifo fifo_write; // circular buffer for trasmission
+    int check_slow_down; // check if the car is going to slow down
 } data;
 
 /* ################################################################
@@ -72,7 +73,7 @@ int return_parser; // return value of the parser
 data data_values; // data structure for the values of the sensors
 parser_state pstate; // parser state
 fifo_pwm fifo_command; // circular buffer for the commands for motors
-int check_slow_down; // check if the car is going to slow down
+
 
 
 int main(void) 
@@ -90,6 +91,7 @@ int main(void)
     data_values.battery_data = 0.0; // initial value for the battery
     data_values.infraRed_data = 0.0; // initial value for the infrared
     fifo_init(data_values.fifo_write); // initialization of the circular buffer
+    data_values.check_slow_down = 0; // check if the car is going to slow down (0 = no stop, 1 = stop)
 
     pstate.state = STATE_DOLLAR; // initial state for the parser
 	pstate.index_type = 0; // initial index for the type of parser
@@ -99,7 +101,7 @@ int main(void)
     char pwm_type[] = "PCCMD"; // correct value for the pwm type 
 
     int counter_for_timer = -1; // counter for timing
-    check_slow_down = 0; // check if the car is going to slow down
+    
     
     /* ################################################################
                         Defining all the tasks
@@ -136,7 +138,7 @@ int main(void)
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 0;
+    schedInfo[4].enable = 1;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -235,7 +237,7 @@ int main(void)
             {
                 counter_for_timer = -1; // reset the counter for the timer
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                U1TXREG = 'w'; 
+                U1TXREG = 'W'; 
             }
         }
         if (state == EXECUTE)
@@ -247,9 +249,9 @@ int main(void)
             {
                 if (counter_for_timer == -1) // need to setup the timer (so the counter)
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0], FAST);                     
+                    input_move (fifo_command.msg[fifo_command.tail][0]);                     
                     counter_for_timer = 0; // set the counter to 0   
-                    check_slow_down = 0; // reset the check for the slow down    
+                    data_values.check_slow_down = 0; // reset the check for the slow down    
                     LATFbits.LATF0 = 0; // set the brakes led as low        
                     U1TXREG = 'I'; 
                 }      
@@ -265,7 +267,6 @@ int main(void)
             else
             {
                 whstop(); // stop the wheels
-                U1TXREG = 'X'; 
             }
         }
         
@@ -302,7 +303,6 @@ int main(void)
         if (counter_for_timer != -1)
         {
             counter_for_timer++; // increment the counter
-            U1TXREG = '+'; 
         }
         
         while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
@@ -405,20 +405,21 @@ void taskADCSensing(void* param)
 
     if(cd->infraRed_data <= EMERGENCY_STOP){
         whstop(); // stop the wheels
+        cd->check_slow_down = 1;
         LATFbits.LATF0 = 1; // set the brakes led as high
-        U1RXREG = 'S'; 
+        U1TXREG = 'S'; 
     }
     /*
-    if((cd->infraRed_data <= PRE_EMERGENCY_STOP && cd->infraRed_data > EMERGENCY_STOP) && check_slow_down == 0)
+    if((cd->infraRed_data <= PRE_EMERGENCY_STOP && cd->infraRed_data > EMERGENCY_STOP) && cd->check_slow_down == 0)
     {
-        check_slow_down = 1;
+        cd->check_slow_down = 1;
         // slowing down
         input_move(fifo_command.msg[fifo_command.tail][0], SLOW);
         U1RXREG = 'P'; 
     }
-    if (cd->infraRed_data > PRE_EMERGENCY_STOP && check_slow_down == 0)
+    if (cd->infraRed_data > PRE_EMERGENCY_STOP && cd->check_slow_down == 0)
     {
-        check_slow_down = 1;
+        cd->check_slow_down = 1;
         // reaccelerating
         input_move(fifo_command.msg[fifo_command.tail][0], FAST);
         LATFbits.LATF0 = 1; // set the brakes led as high

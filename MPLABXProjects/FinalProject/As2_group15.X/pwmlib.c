@@ -1,6 +1,6 @@
 /*
  * File:   pwmlib.c
- * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
+ * Author: fabio
  *
  * Created on 27 maggio 2024, 12.37
  */
@@ -50,10 +50,10 @@ void pwmParametrization()
 
     
     // set the peiod of the pwm at 10khz dividing fcy/10
-    OC1RS = PERIOD;
-    OC2RS = PERIOD;
-    OC3RS = PERIOD;
-    OC4RS = PERIOD;
+    OC1RS = WHMOVESTD;
+    OC2RS = WHMOVESTD;
+    OC3RS = WHMOVESTD;
+    OC4RS = WHMOVESTD;
 }
 
 void pwmConfig()
@@ -64,21 +64,21 @@ void pwmConfig()
     whstop();  
 }
 
-void moveForward (int velocity)
+void moveForward ()
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = velocity;
+    OC2R = WHMOVESTD;
     OC3R = WHNULL;
-    OC4R = velocity;
+    OC4R = WHMOVESTD;
 }
 
-void moveBack(int velocity)
+void moveBack()
 {
     // function to move back
-    OC1R = -velocity;
+    OC1R = -WHMOVESTD;
     OC2R = WHNULL;
-    OC3R = -velocity;
+    OC3R = -WHMOVESTD;
     OC4R = WHNULL;
 }
 
@@ -91,40 +91,39 @@ void whstop()
     OC4R = WHNULL;
 }
 
-void moveLeft(int velocity)
+void moveLeft()
 {
     // function to move left
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = velocity;
+    OC4R = WHMOVESTD;
 }
 
-void moveRight(int velocity)
+void moveRight()
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = velocity;
+    OC2R = WHMOVESTD;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }
 
-void input_move(int input, int wh_vel)
-{ // manage also the slow down condition
-    wh_vel = (wh_vel / 100) * PERIOD;
+void input_move(int input)
+{
     switch (input)
     {
         case FORWARD:
-            moveForward(wh_vel);
+            moveForward();
             break;
         case COUNT_ROTATION:
-            moveLeft(wh_vel);
+            moveLeft();
             break;
         case CLOCKWISE_ROTATION:
-            moveRight(wh_vel);
+            moveRight();
             break;
         case BACKWARD:
-            moveBack(wh_vel);
+            moveBack();
             break;
         default:
             whstop();
