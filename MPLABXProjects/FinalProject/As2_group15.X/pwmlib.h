@@ -15,8 +15,9 @@
 #define WHNULL 0
 #define DUTY_CYCLE 80 // expressed in percentage ( 0 to 100 )
 #define PERIOD 7200 // period for having pwm at 10khz
+#define PRIMARY_REG 3600
 
-#define EMERGENCY_STOP 100
+#define EMERGENCY_STOP 80
 #define PRE_EMERGENCY_STOP 50
 
 #define FORWARD 1

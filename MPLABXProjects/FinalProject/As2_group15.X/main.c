@@ -29,7 +29,6 @@
 #define WAIT_FOR_START 0
 #define EXECUTE 1
 
-
 /* ################################################################
                         Interrupt functions
 ###################################################################*/
@@ -37,8 +36,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // timer i
 void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // button interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
-
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // brake interrupt
 
 /* ################################################################
                         functions definition
@@ -51,7 +48,6 @@ void taskPrintInfrared (void* ); // task for the infrared print on circular buff
 
 // main functions
 void printAck (char ); // task for the ack print on circular buffer
-
 
 /* ################################################################
                         global variables
@@ -128,14 +124,14 @@ int main(void)
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 0;
+    schedInfo[3].enable = 1;
 
     // Print Infrared task
     schedInfo[4].n = -4;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 0;
+    schedInfo[4].enable = 1;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -155,7 +151,7 @@ int main(void)
 
     // low intensity lights setup
     TRISGbits.TRISG1 = 0; // set the low intensity lights as output
-    LATGbits.LATG1 = 1; // set the low intensity lights as high
+    LATGbits.LATG1 = 0; // set the low intensity lights as high
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
@@ -173,7 +169,7 @@ int main(void)
     ###################################################################*/
     // Mapping battery (no need)
     // enable the infra-red sensor
-    TRISBbits.TRISB9 = 0; // set the enable pin as output
+    TRISAbits.TRISA3 = 0; // set the enable pin as output
     LATBbits.LATB9 = 1; //set the high value for enable the infra-red sensor
     
     /* ################################################################
@@ -191,7 +187,7 @@ int main(void)
     ###################################################################*/
     // select the scan pin
     AD1CSSLbits.CSS11 = 1; // Enable AN11 for scan (battery)
-    AD1CSSLbits.CSS14 = 1; // Enable AN14 for scan (infra-red)
+    AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
     ANSELBbits.ANSB14 = 0x0001; // IR input as analog value (controlla rapporto 15 e pin)
@@ -217,60 +213,74 @@ int main(void)
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
     
-    // Interrupt for emergency stop motors pwm
-    IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
-    IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
-    
     int count = 0;
     int executing_command = 0; // is executing a command? (0=no, 1= yes)
-
+    
     while (1)
     {
+        scheduler(schedInfo, MAX_TASKS);
+
         if (state == WAIT_FOR_START)
         {
             LATAbits.LATA7 = 0; // set the beam headlights as high
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
-            if (executing_command == 1 && fifo_command.tail != fifo_command.head && fifo_command.msg[fifo_command.tail][1] == count)
+            if (fifo_command.tail != fifo_command.head && count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1)
             {
-                executing_command = 0; // reset the counter
+                executing_command = 0; // reset the bool
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                //count = 0;
+                count = 0;
+            }
+            else
+            {
+                count++; //Increment the counter
             }
         }
         if (state == EXECUTE)
         {
             LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
-            
-            if (fifo_command.tail != fifo_command.head) // control that the buffer is not empty
+            if (data_values.infraRed_data < EMERGENCY_STOP){
+                whstop(); // stop the wheels
+                if (fifo_command.tail != fifo_command.head && count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1)
+                {
+                    executing_command = 0; // reset the bool
+                    fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                    count = 0;
+                }
+                else
+                {
+                    count++; //Increment the counter
+                }
+            }
+            if (fifo_command.tail != fifo_command.head) // control that the buffer is not empty, and if it enter yet in this code before finish
             {
-                //if (executing_command == 0) // case when I an  ot executing any command, need to set the pwm
-                //{
-                    U1TXREG = 'A';
+                if (executing_command == 0){ // if I am not executing a command
+                    //U1TXREG = 'A';
                     input_move (fifo_command.msg[fifo_command.tail][0]);
-                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    //U1TXREG = fifo_command.msg[fifo_command.tail][0];
                     count = 0; // start/ reset the counter
                     executing_command = 1; // set the boolean now I am doing an action      
-                //}      
+                }
 
-                if (fifo_command.msg[fifo_command.tail][1] == count) // wait for the end of the counter
+                if (count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1) // wait for the end of the counter
                 {
                     // case when the command is finished and in have to set the next command
-                    U1TXREG = 'B';
+                    //U1TXREG = 'B';
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    executing_command = 0; 
                     count = 0; //reset the counter
+                    executing_command = 0; 
                 }
             }
             else
             {
                 whstop(); // stop the wheels
                 count = 0; // reset every loop the counter for avoid problem with overflow
+                executing_command = 0;
+                //U1TXREG = 'B';
             }
-
+            count ++; // increment the counter
         }
-        scheduler(schedInfo, MAX_TASKS);
 
         // check if the parser has received a new message
         if (return_parser == NEW_MESSAGE)
@@ -297,8 +307,7 @@ int main(void)
                 }
             }
         }
-        count++;
-        while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
+        while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb
     }
     return 0;
 }
@@ -312,8 +321,10 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {   
     //set the flag to zero
     IFS0bits.U1TXIF = 0;
-    
-    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
+    // TODO: check what reffer to UTXBF
+    // check the UTXBF is not full and the buffer is not empty
+    // TODO:
+    if((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
         
@@ -370,14 +381,6 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IEC1bits.INT1IE = 1; // enable the interrupt
 }
 
-// Emergency interrupt for the brake
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
-{
-    // interrupt for the brake
-    IFS1bits.INT2IF = 0; // reset interrupt flag
-    // IEC1bits.INT2IE = 0; // disable interrupt (only for new state)
-    whstop(); // stop the wheels
-}
 
 /* ################################################################
                             Scheduler functions
@@ -408,7 +411,6 @@ void taskADCSensing(void* param)
     if(cd->infraRed_data < EMERGENCY_STOP){
         // TODO: implemet all the part relative to the ending the actual time when I am in this state
         LATFbits.LATF0 = 1; // set the brakes led as high
-        whstop(); // stop the wheels
     }else
     {
         LATFbits.LATF0 = 0; // set the brakes led as low

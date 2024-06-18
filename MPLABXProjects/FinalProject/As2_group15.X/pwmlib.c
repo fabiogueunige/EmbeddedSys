@@ -68,17 +68,17 @@ void moveForward ()
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = DUTY_CYCLE * PERIOD /100;
+    OC2R = PRIMARY_REG;
     OC3R = WHNULL;
-    OC4R = DUTY_CYCLE * PERIOD /100;
+    OC4R = PRIMARY_REG;
 }
 
 void moveBack()
 {
     // function to move back
-    OC1R = - DUTY_CYCLE * OC2RS/100;
+    OC1R = - PRIMARY_REG;
     OC2R = WHNULL;
-    OC3R = - DUTY_CYCLE * OC2RS/100;
+    OC3R = - PRIMARY_REG;
     OC4R = WHNULL;
 }
 
@@ -97,14 +97,14 @@ void moveLeft()
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = DUTY_CYCLE * OC4RS /100;
+    OC4R = PRIMARY_REG;
 }
 
 void moveRight()
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = DUTY_CYCLE * OC2RS /100;
+    OC2R = PRIMARY_REG;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }
