@@ -6,27 +6,30 @@
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 #define WHNULL 0
-#define WHMOVESTD 400
-#define WHMOVEFULL 7200
+#define SLOW 50
+#define FAST 80
+#define PERIOD 7200
 
 #define EMERGENCY_STOP 30
-#define PRE_EMERGENCY_STOP 50
+#define PRE_EMERGENCY_STOP 60
 
 #define FORWARD 1
 #define COUNT_ROTATION 2
 #define CLOCKWISE_ROTATION 3
 #define BACKWARD 4
 
+
+
 void pwmRemap();
 void pwmParametrization();
 void pwmConfig(); // standard confiuration
-void moveForward ( );
-void moveLeft();
-void moveRight();
-void moveBack();
+void moveForward (int );
+void moveLeft(int);
+void moveRight(int );
+void moveBack(int );
 void whstop();
 
-void input_move(int );
+void input_move(int , int );
 
 #ifdef	__cplusplus
 extern "C" {

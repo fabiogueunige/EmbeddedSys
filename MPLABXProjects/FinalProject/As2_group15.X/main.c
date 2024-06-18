@@ -72,6 +72,7 @@ int return_parser; // return value of the parser
 data data_values; // data structure for the values of the sensors
 parser_state pstate; // parser state
 fifo_pwm fifo_command; // circular buffer for the commands for motors
+int check_slow_down; // check if the car is going to slow down
 
 
 int main(void) 
@@ -96,9 +97,9 @@ int main(void)
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
     char pwm_type[] = "PCCMD"; // correct value for the pwm type 
-    int number_of_commas = 0; // number of commas in the message payload
 
     int counter_for_timer = -1; // counter for timing
+    check_slow_down = 0; // check if the car is going to slow down
     
     /* ################################################################
                         Defining all the tasks
@@ -128,14 +129,14 @@ int main(void)
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 1;
+    schedInfo[3].enable = 0;
 
     // Print Infrared task
     schedInfo[4].n = -10;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 1;
+    schedInfo[4].enable = 0;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -217,22 +218,6 @@ int main(void)
     IEC0bits.U1TXIE = 1; // enable U1TX interrupt     
 
     /* ################################################################
-                        Empting the UART registers
-    ###################################################################*/
-    // reception register
-    /* Controlla e metti comando per svuotarli
-    while(U1STAbits.URXDA == 1) // while there is data in the buffer
-    {
-        char c = U1RXREG; // read the data
-    }
-    // trasmission register
-    while(U1STAbits.UTXBF == 1) // while the buffer is full
-    {
-        char c = U1TXREG; // read the data
-    }
-    */
-
-    /* ################################################################
                         Timer for Heartbeat
     ###################################################################*/
     tmr_setup_period(TIMER5, 1); // setup the period for the while loop
@@ -246,10 +231,11 @@ int main(void)
         {
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
-            if (counter_for_timer == ([fifo_command.tail][1] - 1) && fifo_command.tail != fifo_command.head)
+            if (counter_for_timer == fifo_command.msg[fifo_command.tail][1] && fifo_command.tail != fifo_command.head)
             {
                 counter_for_timer = -1; // reset the counter for the timer
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                U1TXREG = 'w'; 
             }
         }
         if (state == EXECUTE)
@@ -261,20 +247,25 @@ int main(void)
             {
                 if (counter_for_timer == -1) // need to setup the timer (so the counter)
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0]);                     
-                    counter_for_timer = 0; // set the counter to 0                
+                    input_move (fifo_command.msg[fifo_command.tail][0], FAST);                     
+                    counter_for_timer = 0; // set the counter to 0   
+                    check_slow_down = 0; // reset the check for the slow down    
+                    LATFbits.LATF0 = 0; // set the brakes led as low        
+                    U1TXREG = 'I'; 
                 }      
 
-                if (counter_for_timer == [fifo_command.tail][1] - 1) // wait for the end of the time of the motor
+                if (counter_for_timer == fifo_command.msg[fifo_command.tail][1]) // wait for the end of the time of the motor
                 {
                     // circular increment of the tail
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
                     counter_for_timer = -1; // reset the counter
+                    U1TXREG = 'E'; 
                 }
             }
             else
             {
                 whstop(); // stop the wheels
+                U1TXREG = 'X'; 
             }
         }
         
@@ -291,21 +282,14 @@ int main(void)
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
                     // extract the values
+                    fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
+                    fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
-                    number_of_commas = next_value(pstate.msg_payload, 0);
-                    if (number_of_commas >= 1) // message can contain more than one comma
-                    {
-                        // error detected int message payload
-                        fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
-                        fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + number_of_commas);
+                    // print there is more space
+                    printAck ('1'); 
 
-                        // print there is more space
-                        printAck ('1'); 
-
-                        // circular increment of the head of the buffer
-                        fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
-                    }
-                    // else: error detected in the string payload (discarding it)
+                    // circular increment of the head of the buffer
+                    fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
                 }
                 else // buffer is full
                 {
@@ -318,6 +302,7 @@ int main(void)
         if (counter_for_timer != -1)
         {
             counter_for_timer++; // increment the counter
+            U1TXREG = '+'; 
         }
         
         while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
@@ -418,13 +403,27 @@ void taskADCSensing(void* param)
     cd->battery_data = battery_conversion((float) potBitsBatt); 
     cd->infraRed_data = volt2cm((float) potBitsIr);
 
-    if(cd->infraRed_data < EMERGENCY_STOP){
+    if(cd->infraRed_data <= EMERGENCY_STOP){
         whstop(); // stop the wheels
         LATFbits.LATF0 = 1; // set the brakes led as high
-    }else
-    {
-        LATFbits.LATF0 = 0; // set the brakes led as low
+        U1RXREG = 'S'; 
     }
+    /*
+    if((cd->infraRed_data <= PRE_EMERGENCY_STOP && cd->infraRed_data > EMERGENCY_STOP) && check_slow_down == 0)
+    {
+        check_slow_down = 1;
+        // slowing down
+        input_move(fifo_command.msg[fifo_command.tail][0], SLOW);
+        U1RXREG = 'P'; 
+    }
+    if (cd->infraRed_data > PRE_EMERGENCY_STOP && check_slow_down == 0)
+    {
+        check_slow_down = 1;
+        // reaccelerating
+        input_move(fifo_command.msg[fifo_command.tail][0], FAST);
+        LATFbits.LATF0 = 1; // set the brakes led as high
+        U1RXREG = 'F'; 
+    }*/
 }
 
 void taskPrintBattery (void* param)

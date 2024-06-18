@@ -50,10 +50,10 @@ void pwmParametrization()
 
     
     // set the peiod of the pwm at 10khz dividing fcy/10
-    OC1RS = WHMOVESTD;
-    OC2RS = WHMOVESTD;
-    OC3RS = WHMOVESTD;
-    OC4RS = WHMOVESTD;
+    OC1RS = PERIOD;
+    OC2RS = PERIOD;
+    OC3RS = PERIOD;
+    OC4RS = PERIOD;
 }
 
 void pwmConfig()
@@ -64,21 +64,21 @@ void pwmConfig()
     whstop();  
 }
 
-void moveForward ()
+void moveForward (int velocity)
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = velocity;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = velocity;
 }
 
-void moveBack()
+void moveBack(int velocity)
 {
     // function to move back
-    OC1R = -WHMOVESTD;
+    OC1R = -velocity;
     OC2R = WHNULL;
-    OC3R = -WHMOVESTD;
+    OC3R = -velocity;
     OC4R = WHNULL;
 }
 
@@ -91,39 +91,40 @@ void whstop()
     OC4R = WHNULL;
 }
 
-void moveLeft()
+void moveLeft(int velocity)
 {
     // function to move left
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = velocity;
 }
 
-void moveRight()
+void moveRight(int velocity)
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = velocity;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }
 
-void input_move(int input)
-{
+void input_move(int input, int wh_vel)
+{ // manage also the slow down condition
+    wh_vel = (wh_vel / 100) * PERIOD;
     switch (input)
     {
         case FORWARD:
-            moveForward();
+            moveForward(wh_vel);
             break;
         case COUNT_ROTATION:
-            moveLeft();
+            moveLeft(wh_vel);
             break;
         case CLOCKWISE_ROTATION:
-            moveRight();
+            moveRight(wh_vel);
             break;
         case BACKWARD:
-            moveBack();
+            moveBack(wh_vel);
             break;
         default:
             whstop();
