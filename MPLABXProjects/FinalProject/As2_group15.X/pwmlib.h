@@ -13,8 +13,8 @@
 #include <xc.h> // include processor files - each processor file is guarded.  
 
 #define WHNULL 0
-#define WHMOVESTD 400
-#define WHMOVEFULL 7200
+#define DUTY_CYCLE 80 // expressed in percentage ( 0 to 100 )
+#define PERIOD 7200 // period for having pwm at 10khz
 
 #define EMERGENCY_STOP 100
 #define PRE_EMERGENCY_STOP 50

@@ -71,7 +71,6 @@ data data_values; // data structure for the values of the sensors
 parser_state pstate; // parser state
 fifo_pwm fifo_command; // circular buffer for the commands for motors
 
-int counter_for_int2; // counter for the interrupt 2
 
 int main(void) 
 {
@@ -100,8 +99,6 @@ int main(void)
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
     char pwm_type[] = "PCCMD"; // correct value for the pwm type 
-
-    counter_for_int2 = -1; // counter for the interrupt 2 for timing
     
     /* ################################################################
                         Defining all the tasks
@@ -113,32 +110,32 @@ int main(void)
     schedInfo[0].params = NULL;
     schedInfo[0].enable = 1;
     // indicator task config
-    schedInfo[1].n = -2;
+    schedInfo[1].n = -1;
     schedInfo[1].N = 1000;
     schedInfo[1].f = taskBlinkIndicators;
     schedInfo[1].params = NULL;
     schedInfo[1].enable = 1;
     
     // ADC acquisition task
-    schedInfo[2].n = -5;
+    schedInfo[2].n = -2;
     schedInfo[2].N = 1;
     schedInfo[2].f = taskADCSensing;
     schedInfo[2].params = (void*)(&data_values);
     schedInfo[2].enable = 1;
     
     // Print Battery task
-    schedInfo[3].n = -60;
+    schedInfo[3].n = -3;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
-    schedInfo[3].enable = 1;
+    schedInfo[3].enable = 0;
 
     // Print Infrared task
-    schedInfo[4].n = -10;
+    schedInfo[4].n = -4;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
-    schedInfo[4].enable = 1;
+    schedInfo[4].enable = 0;
 
     /* ################################################################
                         pin remap and setup of the led
@@ -162,7 +159,7 @@ int main(void)
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
-    LATAbits.LATA7 = 1; // set the beam headlights as high
+    LATAbits.LATA7 = 0; // set the beam headlights as high
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -224,59 +221,57 @@ int main(void)
     IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
     IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
     
+    int count = 0;
+    int executing_command = 0; // is executing a command? (0=no, 1= yes)
 
     while (1)
     {
         if (state == WAIT_FOR_START)
         {
+            LATAbits.LATA7 = 0; // set the beam headlights as high
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
-            if (counter_for_int2 == 0 && fifo_command.tail != fifo_command.head)
+            if (executing_command == 1 && fifo_command.tail != fifo_command.head && fifo_command.msg[fifo_command.tail][1] == count)
             {
-                counter_for_int2 = -1; // reset the counter
+                executing_command = 0; // reset the counter
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
+                //count = 0;
             }
         }
         if (state == EXECUTE)
         {
+            LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
             
-            // check the control buffer is not empty
-            if (fifo_command.tail != fifo_command.head)
+            if (fifo_command.tail != fifo_command.head) // control that the buffer is not empty
             {
-                if (counter_for_int2 == -1) // need to setup the timer
-                {
+                //if (executing_command == 0) // case when I an  ot executing any command, need to set the pwm
+                //{
+                    U1TXREG = 'A';
                     input_move (fifo_command.msg[fifo_command.tail][0]);
-                    if (fifo_command.msg[fifo_command.tail][1] <= MAX_TIME)
-                    {
-                        tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
-                    }
-                    else 
-                    {
-                        // setup the timer (consider the timer)
-                        tmr_setup_period(TIMER4, MAX_TIME); // setup the timer (consider the timer)
-                    }
-                    // set the timer for the wheels motor
-                     
-                    counter_for_int2 = 0; // set the counter to 0                
-                }      
+                    U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    count = 0; // start/ reset the counter
+                    executing_command = 1; // set the boolean now I am doing an action      
+                //}      
 
-                if (tmr_wait_period(TIMER4) == 1 && counter_for_int2 == 0) // wait for the end of the time of the motor
+                if (fifo_command.msg[fifo_command.tail][1] == count) // wait for the end of the counter
                 {
-                    // circular increment of the tail
+                    // case when the command is finished and in have to set the next command
+                    U1TXREG = 'B';
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    counter_for_int2 = -1; // reset the counter
+                    executing_command = 0; 
+                    count = 0; //reset the counter
                 }
             }
             else
             {
                 whstop(); // stop the wheels
+                count = 0; // reset every loop the counter for avoid problem with overflow
             }
+
         }
-        
-      
         scheduler(schedInfo, MAX_TASKS);
-        
+
         // check if the parser has received a new message
         if (return_parser == NEW_MESSAGE)
         {
@@ -302,7 +297,7 @@ int main(void)
                 }
             }
         }
-        
+        count++;
         while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
     }
     return 0;
@@ -411,8 +406,9 @@ void taskADCSensing(void* param)
     cd->infraRed_data = volt2cm((float) potBitsIr);
 
     if(cd->infraRed_data < EMERGENCY_STOP){
-        IFS1bits.INT2IF = 1; // ativate the flag for he emergency brake
+        // TODO: implemet all the part relative to the ending the actual time when I am in this state
         LATFbits.LATF0 = 1; // set the brakes led as high
+        whstop(); // stop the wheels
     }else
     {
         LATFbits.LATF0 = 0; // set the brakes led as low

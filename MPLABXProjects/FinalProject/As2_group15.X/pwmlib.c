@@ -37,7 +37,7 @@ void pwmRemap()
 void pwmParametrization()
 {
     // selct for clock for the output compare
-    OC1CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
+    OC1CON1bits.OCTSEL = 0b111; // select the input clock of the microcontroller 
     OC2CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
     OC3CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
     OC4CON1bits.OCTSEL = 0b111; // select the input clock  source for the OC1module 
@@ -49,11 +49,11 @@ void pwmParametrization()
     OC4CON1bits.OCM = 0b110; // edge aligned PWM mode (high when OCxTMR = 0, low for OCxTMR = OCxRS)
 
     
-    // set the peiod of the pwm at 10khz dividing fcy/10
-    OC1RS = WHMOVESTD;
-    OC2RS = WHMOVESTD;
-    OC3RS = WHMOVESTD;
-    OC4RS = WHMOVESTD;
+    // set the peiod of the pwm at 10khz (fcy/7200)
+    OC1RS = PERIOD; // set the period of the pwm
+    OC2RS = PERIOD;
+    OC3RS = PERIOD;
+    OC4RS = PERIOD;
 }
 
 void pwmConfig()
@@ -68,17 +68,17 @@ void moveForward ()
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = DUTY_CYCLE * PERIOD /100;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = DUTY_CYCLE * PERIOD /100;
 }
 
 void moveBack()
 {
     // function to move back
-    OC1R = -WHMOVESTD;
+    OC1R = - DUTY_CYCLE * OC2RS/100;
     OC2R = WHNULL;
-    OC3R = -WHMOVESTD;
+    OC3R = - DUTY_CYCLE * OC2RS/100;
     OC4R = WHNULL;
 }
 
@@ -97,14 +97,14 @@ void moveLeft()
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = WHMOVESTD;
+    OC4R = DUTY_CYCLE * OC4RS /100;
 }
 
 void moveRight()
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = WHMOVESTD;
+    OC2R = DUTY_CYCLE * OC2RS /100;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }
