@@ -127,14 +127,14 @@ int main(void)
     schedInfo[2].enable = 1;
     
     // Print Battery task
-    schedInfo[3].n = -52;
+    schedInfo[3].n = -60;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
     schedInfo[3].enable = 1;
 
     // Print Infrared task
-    schedInfo[4].n = -2;
+    schedInfo[4].n = -5;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
@@ -162,7 +162,7 @@ int main(void)
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
-    LATAbits.LATA7 = 0; // set the beam headlights as low
+    LATAbits.LATA7 = 1; // set the beam headlights as high
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -241,7 +241,6 @@ int main(void)
         }
         if (state == EXECUTE)
         {
-            LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
             
             // check the control buffer is not empty
@@ -249,7 +248,8 @@ int main(void)
             {
                 if (counter_for_timer == -1) // need to setup the timer (so the counter)
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0]);                     
+                    input_move (fifo_command.msg[fifo_command.tail][0], FAST);      
+                    //input_move (fifo_command.msg[fifo_command.tail][0]);               
                     counter_for_timer = 0; // set the counter to 0   
                     data_values.check_slow_down = 0; // reset the check for the slow down    
                     LATFbits.LATF0 = 0; // set the brakes led as low        
@@ -271,21 +271,22 @@ int main(void)
       
         scheduler(schedInfo, MAX_TASKS);
         
-        /*if((data_values.infraRed_data <= PRE_EMERGENCY_STOP && data_values.infraRed_data > EMERGENCY_STOP) && data_values.check_slow_down == 0)
+        if((data_values.infraRed_data <= PRE_EMERGENCY_STOP && data_values.infraRed_data > EMERGENCY_STOP) && data_values.check_slow_down == 0)
         {
             data_values.check_slow_down = 1;
+            LATFbits.LATF0 = 0; // set the brakes led as low
             // slowing down
             input_move(fifo_command.msg[fifo_command.tail][0], SLOW);
             U1TXREG = 'P'; 
         }
-        if (data_values.infraRed_data > PRE_EMERGENCY_STOP && data_values.check_slow_down == 0)
+        if (data_values.infraRed_data > PRE_EMERGENCY_STOP && data_values.check_slow_down == 1)
         {
-            data_values.check_slow_down = 1;
+            data_values.check_slow_down = 0;
             // reaccelerating
             input_move(fifo_command.msg[fifo_command.tail][0], FAST);
-            LATFbits.LATF0 = 1; // set the brakes led as high
+            LATFbits.LATF0 = 0; // set the brakes led as low
             U1TXREG = 'F'; 
-        }*/
+        }
         
         // check if the parser has received a new message
         if (return_parser == NEW_MESSAGE)

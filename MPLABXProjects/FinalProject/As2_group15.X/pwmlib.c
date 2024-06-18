@@ -64,21 +64,21 @@ void pwmConfig()
     whstop();  
 }
 
-void moveForward ()
+void moveForward (int velocity)
 {
     // function to move forward
     OC1R = WHNULL;
-    OC2R = DUTY_CYCLE * PERIOD /100;;
+    OC2R = velocity;
     OC3R = WHNULL;
-    OC4R = DUTY_CYCLE * PERIOD /100;;
+    OC4R = velocity;
 }
 
-void moveBack()
+void moveBack(int velocity)
 {
     // function to move back
-    OC1R = -DUTY_CYCLE * PERIOD /100;;
+    OC1R = -velocity;
     OC2R = WHNULL;
-    OC3R = -DUTY_CYCLE * PERIOD /100;;
+    OC3R = -velocity;
     OC4R = WHNULL;
 }
 
@@ -91,39 +91,47 @@ void whstop()
     OC4R = WHNULL;
 }
 
-void moveLeft()
+void moveLeft(int velocity)
 {
     // function to move left
     OC1R = WHNULL;
     OC2R = WHNULL;
     OC3R = WHNULL;
-    OC4R = DUTY_CYCLE * PERIOD /100;;
+    OC4R = velocity;
 }
 
-void moveRight()
+void moveRight(int velocity)
 {
     // function to move right
     OC1R = WHNULL;
-    OC2R = DUTY_CYCLE * PERIOD /100;;
+    OC2R = velocity;
     OC3R = WHNULL;
     OC4R = WHNULL;
 }
 
-void input_move(int input)
+void input_move(int input, int mode)
 {
+    if (mode == FAST)
+    {
+        mode = (DUTY_CYCLE_FAST / 100) * PERIOD;
+    }
+    else 
+    {
+        mode = (DUTY_CYCLE_SLOW / 100) * PERIOD;
+    }
     switch (input)
     {
         case FORWARD:
-            moveForward();
+            moveForward(mode);
             break;
         case COUNT_ROTATION:
-            moveLeft();
+            moveLeft(mode);
             break;
         case CLOCKWISE_ROTATION:
-            moveRight();
+            moveRight(mode);
             break;
         case BACKWARD:
-            moveBack();
+            moveBack(mode);
             break;
         default:
             whstop();

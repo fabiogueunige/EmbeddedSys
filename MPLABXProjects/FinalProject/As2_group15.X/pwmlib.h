@@ -14,11 +14,14 @@
 
 #define WHNULL 0
 #define PERIOD 7200
-#define DUTY_CYCLE 60
+#define DUTY_CYCLE_SLOW 50
+#define DUTY_CYCLE_FAST 80
 
+#define FAST 1
+#define SLOW 2
 
-#define EMERGENCY_STOP 50
-#define PRE_EMERGENCY_STOP 50
+#define EMERGENCY_STOP 30
+#define PRE_EMERGENCY_STOP 60
 
 #define FORWARD 1
 #define COUNT_ROTATION 2
@@ -28,13 +31,13 @@
 void pwmRemap();
 void pwmParametrization();
 void pwmConfig(); // standard confiuration
-void moveForward ( );
-void moveLeft();
-void moveRight();
-void moveBack();
+void moveForward (int );
+void moveLeft(int );
+void moveRight(int );
+void moveBack(int );
 void whstop();
 
-void input_move(int );
+void input_move(int , int );
 
 #ifdef	__cplusplus
 extern "C" {
