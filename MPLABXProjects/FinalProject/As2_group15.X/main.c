@@ -120,7 +120,7 @@ int main(void)
     schedInfo[2].enable = 1;
     
     // Print Battery task
-    schedInfo[3].n = -3;
+    schedInfo[3].n = -55;
     schedInfo[3].N = 1000;
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
@@ -170,7 +170,7 @@ int main(void)
     // Mapping battery (no need)
     // enable the infra-red sensor
     TRISAbits.TRISA3 = 0; // set the enable pin as output
-    LATBbits.LATB9 = 1; //set the high value for enable the infra-red sensor
+    LATAbits.LATA3 = 1; //set the high value for enable the infra-red sensor
     
     /* ################################################################
                         Peripheral configuration
@@ -190,7 +190,7 @@ int main(void)
     AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
-    ANSELBbits.ANSB14 = 0x0001; // IR input as analog value (controlla rapporto 15 e pin)
+    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value
     
     //MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
@@ -321,7 +321,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
 {   
     //set the flag to zero
     IFS0bits.U1TXIF = 0;
-    // TODO: check what reffer to UTXBF
+
     // check the UTXBF is not full and the buffer is not empty
     // TODO:
     if((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
