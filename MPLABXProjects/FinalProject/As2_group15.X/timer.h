@@ -1,10 +1,3 @@
-/* 
- * File:   
- * Author: 
- * Comments:
- * Revision history: 
- */
-
 // This is a guard condition so that contents of this file are not included
 // more than once.  
 #ifndef TIMER_H
@@ -27,7 +20,6 @@ void tmr_setup_period(int timer, int ms);
 int tmr_wait_period(int timer);
 void tmr_wait_ms(int timer, int ms);
 
-int tmr_wait_second(int, int);
 // TODO Insert C++ class definitions if appropriate
 
 // TODO Insert declarations

@@ -1,6 +1,6 @@
 /*
  * File:   uartlib.c
- * Author: fabio
+ * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
  *
  * Created on 14 maggio 2024, 11.23
  */

@@ -1,10 +1,3 @@
- /* 
- * File:   
- * Author: 
- * Comments:
- * Revision history: 
- */
-
 // This is a guard condition so that contents of this file are not included
 // more than once.  
 #ifndef PWMLIB_H
@@ -16,7 +9,7 @@
 #define WHMOVESTD 400
 #define WHMOVEFULL 7200
 
-#define EMERGENCY_STOP 100
+#define EMERGENCY_STOP 30
 #define PRE_EMERGENCY_STOP 50
 
 #define FORWARD 1

@@ -1,6 +1,6 @@
 /*
  * File:   pwmlib.c
- * Author: fabio
+ * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
  *
  * Created on 27 maggio 2024, 12.37
  */

@@ -1,6 +1,6 @@
 /*
  * File:   scheduler.c
- * Author: fabio
+ * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
  *
  * Created on 14 giugno 2024, 9.37
  */

@@ -1,10 +1,10 @@
 /*
  * File:   main.c
  * Author: 
- * * Chiappe Andrea
- * * Di Donna Alberto
+ * * Chiappe Andrea s4673275
+ * * Di Donna Alberto ???????????
  * * Guelfi Fabio s5004782
- * * Utegaliyeva Aidana 
+ * * Utegaliyeva Aidana s5624137
  *
  * Created on June 13, 2024, 12:36 PM
  */
@@ -12,6 +12,7 @@
 
 #include "xc.h"
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include "timer.h"
 #include "uartlib.h"
@@ -23,7 +24,7 @@
 
 /* ################################################################
                         Parameter Definition
-    ###################################################################*/
+###################################################################*/
 
 #define MAX_TASKS 5
 #define WAIT_FOR_START 0
@@ -38,7 +39,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // butt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
 
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void);  // brake interrupt
 
 /* ################################################################
                         functions definition
@@ -54,7 +54,7 @@ void printAck (char ); // task for the ack print on circular buffer
 
 
 /* ################################################################
-                        global variables
+                    Struture definition
 ###################################################################*/
 typedef struct {
     float battery_data; // battery value
@@ -62,7 +62,9 @@ typedef struct {
     fifo fifo_write; // circular buffer for trasmission
 } data;
 
-
+/* ################################################################
+                        global variables
+###################################################################*/
 heartbeat schedInfo[MAX_TASKS]; // task of the scheduler
 int state; // state of the state machine
 int return_parser; // return value of the parser
@@ -71,7 +73,6 @@ data data_values; // data structure for the values of the sensors
 parser_state pstate; // parser state
 fifo_pwm fifo_command; // circular buffer for the commands for motors
 
-int counter_for_int2; // counter for the interrupt 2
 
 int main(void) 
 {
@@ -80,11 +81,6 @@ int main(void)
     ###################################################################*/
     // 0 = digital; 1 = analog
     ANSELA = ANSELB = ANSELC = ANSELD = ANSELE = ANSELG = 0x0000;
-       
-    /* ################################################################
-                                Timer setup
-    ###################################################################*/
-    tmr_setup_period(TIMER5, 1); // setup the period for the while loop
     
     /* ################################################################
                             State Initialization
@@ -100,8 +96,9 @@ int main(void)
     return_parser = 0; // initial value for the parser
     fifo_pwm_init(fifo_command); // initialization of the circular buffer for the commands
     char pwm_type[] = "PCCMD"; // correct value for the pwm type 
+    int number_of_commas = 0; // number of commas in the message payload
 
-    counter_for_int2 = -1; // counter for the interrupt 2 for timing
+    int counter_for_timer = -1; // counter for timing
     
     /* ################################################################
                         Defining all the tasks
@@ -120,7 +117,7 @@ int main(void)
     schedInfo[1].enable = 1;
     
     // ADC acquisition task
-    schedInfo[2].n = -5;
+    schedInfo[2].n = -1;
     schedInfo[2].N = 1;
     schedInfo[2].f = taskADCSensing;
     schedInfo[2].params = (void*)(&data_values);
@@ -209,8 +206,7 @@ int main(void)
 
     // Interrupt for the button to change the state
     IFS1bits.INT1IF = 0; // clear interrupt flag
-    IEC1bits.INT1IE = 1; // enable interrupt
-    IFS0bits.T1IF = 0; // reset interrupt flag timer 1
+    IEC1bits.INT1IE = 1; // enable interrupt for button
 
     // Interrupt for reception
     IFS0bits.U1RXIF = 0; // setting the flag for reception to 0
@@ -218,22 +214,41 @@ int main(void)
     
     // Interrupt for trasmission
     IFS0bits.U1TXIF = 0; // resetting U1TX interrupt flag
-    IEC0bits.U1TXIE = 1; // enable U1TX interrupt 
-    
-    // Interrupt for emergency stop motors pwm
-    IFS1bits.INT2IF = 0; // clear interrupt flag for motors pwm
-    IEC1bits.INT2IE = 1; // enable interrupt for motors pwm
-    
+    IEC0bits.U1TXIE = 1; // enable U1TX interrupt     
 
+    /* ################################################################
+                        Empting the UART registers
+    ###################################################################*/
+    // reception register
+    /* Controlla e metti comando per svuotarli
+    while(U1STAbits.URXDA == 1) // while there is data in the buffer
+    {
+        char c = U1RXREG; // read the data
+    }
+    // trasmission register
+    while(U1STAbits.UTXBF == 1) // while the buffer is full
+    {
+        char c = U1TXREG; // read the data
+    }
+    */
+
+    /* ################################################################
+                        Timer for Heartbeat
+    ###################################################################*/
+    tmr_setup_period(TIMER5, 1); // setup the period for the while loop
+
+    /* ################################################################
+                        While loop start
+    ###################################################################*/
     while (1)
     {
         if (state == WAIT_FOR_START)
         {
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
-            if (counter_for_int2 == 0 && fifo_command.tail != fifo_command.head)
+            if (counter_for_timer == ([fifo_command.tail][1] - 1) && fifo_command.tail != fifo_command.head)
             {
-                counter_for_int2 = -1; // reset the counter
+                counter_for_timer = -1; // reset the counter for the timer
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
             }
         }
@@ -244,36 +259,17 @@ int main(void)
             // check the control buffer is not empty
             if (fifo_command.tail != fifo_command.head)
             {
-                if (counter_for_int2 == -1) // need to setup the timer
+                if (counter_for_timer == -1) // need to setup the timer (so the counter)
                 {
-                    input_move (fifo_command.msg[fifo_command.tail][0]);
-                    if (fifo_command.msg[fifo_command.tail][1] <= MAX_TIME)
-                    {
-                        if (fifo_command.msg[fifo_command.tail][1] == 0)
-                        {
-                            // probably error, so action ends immediately
-                            IFS1bits.T4IF = 1; // set the flag to zero
-                        } else 
-                        {
-                            // setup the timer (consider the timer
-                            tmr_setup_period(TIMER4, fifo_command.msg[fifo_command.tail][1]);
-                        }
-                    }
-                    else 
-                    {
-                        // setup the timer (consider the timer)
-                        tmr_setup_period(TIMER4, MAX_TIME); // setup the timer (consider the timer)
-                    }
-                    // set the timer for the wheels motor
-                     
-                    counter_for_int2 = 0; // set the counter to 0                
+                    input_move (fifo_command.msg[fifo_command.tail][0]);                     
+                    counter_for_timer = 0; // set the counter to 0                
                 }      
 
-                if (tmr_wait_period(TIMER4) == 1 && counter_for_int2 == 0) // wait for the end of the time of the motor
+                if (counter_for_timer == [fifo_command.tail][1] - 1) // wait for the end of the time of the motor
                 {
                     // circular increment of the tail
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    counter_for_int2 = -1; // reset the counter
+                    counter_for_timer = -1; // reset the counter
                 }
             }
             else
@@ -295,20 +291,33 @@ int main(void)
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
                     // extract the values
-                    fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
-                    fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
-                    // print there is more space
-                    printAck ('1'); 
+                    number_of_commas = next_value(pstate.msg_payload, 0);
+                    if (number_of_commas >= 1) // message can contain more than one comma
+                    {
+                        // error detected int message payload
+                        fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
+                        fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + number_of_commas);
 
-                    // circular increment of the head of the buffer
-                    fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
+                        // print there is more space
+                        printAck ('1'); 
+
+                        // circular increment of the head of the buffer
+                        fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
+                    }
+                    // else: error detected in the string payload (discarding it)
                 }
                 else // buffer is full
                 {
                     printAck ('0'); 
                 }
             }
+        }
+
+        // increment the counter for the timer
+        if (counter_for_timer != -1)
+        {
+            counter_for_timer++; // increment the counter
         }
         
         while(!tmr_wait_period(TIMER5)); // wait for the end of the Hb  
@@ -328,7 +337,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     
     while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
-        U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
+        U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circular buffer into the uart1 register
         
         // circular increment of the tail
         data_values.fifo_write.tail = (data_values.fifo_write.tail + 1) % DIMFIFOWRITE;
@@ -383,15 +392,6 @@ void __attribute__((interrupt, auto_psv)) _T1Interrupt(void) {
     IEC1bits.INT1IE = 1; // enable the interrupt
 }
 
-// Emergency interrupt for the brake
-void __attribute__((__interrupt__, __auto_psv__)) _INT2Interrupt(void)
-{
-    // interrupt for the brake
-    IFS1bits.INT2IF = 0; // reset interrupt flag
-    // IEC1bits.INT2IE = 0; // disable interrupt (only for new state)
-    whstop(); // stop the wheels
-}
-
 /* ################################################################
                             Scheduler functions
 ###################################################################*/
@@ -419,7 +419,7 @@ void taskADCSensing(void* param)
     cd->infraRed_data = volt2cm((float) potBitsIr);
 
     if(cd->infraRed_data < EMERGENCY_STOP){
-        IFS1bits.INT2IF = 1; // ativate the flag for he emergency brake
+        whstop(); // stop the wheels
         LATFbits.LATF0 = 1; // set the brakes led as high
     }else
     {
