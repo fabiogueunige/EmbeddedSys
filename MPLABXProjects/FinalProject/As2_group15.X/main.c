@@ -330,7 +330,7 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     //set the flag to zero
     IFS0bits.U1TXIF = 0;
     
-    if((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
+    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circular buffer into the uart1 register
         

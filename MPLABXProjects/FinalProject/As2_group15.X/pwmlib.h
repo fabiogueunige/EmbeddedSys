@@ -19,7 +19,7 @@
 #define WH_FAST 3600 // 50 per cent
 #define WH_SLOW 5760 // 80 per cent
 
-#define EMERGENCY_STOP 50
+#define EMERGENCY_STOP 70
 #define PRE_EMERGENCY_STOP 150
 
 #define FORWARD 1
