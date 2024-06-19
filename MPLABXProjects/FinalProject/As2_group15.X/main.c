@@ -101,34 +101,34 @@ int main(void)
     ###################################################################*/
     // LED A0 task config
     schedInfo[0].n = 0;
-    schedInfo[0].N = 1000;
+    schedInfo[0].N = 1000; // 1 Hz
     schedInfo[0].f = taskBlinkLedA0;
     schedInfo[0].params = NULL;
     schedInfo[0].enable = 1;
     // indicator task config
     schedInfo[1].n = -1;
-    schedInfo[1].N = 1000;
+    schedInfo[1].N = 1000; // 1 Hz
     schedInfo[1].f = taskBlinkIndicators;
     schedInfo[1].params = NULL;
     schedInfo[1].enable = 1;
     
     // ADC acquisition task
     schedInfo[2].n = -2;
-    schedInfo[2].N = 1;
+    schedInfo[2].N = 1; // 1 kHz
     schedInfo[2].f = taskADCSensing;
     schedInfo[2].params = (void*)(&data_values);
     schedInfo[2].enable = 1;
     
     // Print Battery task
     schedInfo[3].n = -55;
-    schedInfo[3].N = 1000;
+    schedInfo[3].N = 1000; // 1 Hz
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
     schedInfo[3].enable = 1;
 
     // Print Infrared task
     schedInfo[4].n = -5;
-    schedInfo[4].N = 100;
+    schedInfo[4].N = 100; // 10 Hz
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
     schedInfo[4].enable = 1;
@@ -225,11 +225,12 @@ int main(void)
             LATAbits.LATA7 = 0; // set the beam headlights as high
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
-            if (fifo_command.tail != fifo_command.head && count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1)
+            if (fifo_command.tail != fifo_command.head && count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1) 
+            // case when the buffer is not empty, the counter is expired and I am executing a command
             {
                 executing_command = 0; // reset the bool
                 fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                count = 0;
+                count = 0; // reset the timer
             }
             else
             {
@@ -240,25 +241,27 @@ int main(void)
         {
             LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
-            if (data_values.infraRed_data < EMERGENCY_STOP){
+            if (data_values.infraRed_data < EMERGENCY_STOP)
+            {
                 whstop(); // stop the wheels
                 if (fifo_command.tail != fifo_command.head && count == fifo_command.msg[fifo_command.tail][1] && executing_command == 1)
+                // case when the buffer is not empty, the counter is expired and I am executing a command
                 {
                     executing_command = 0; // reset the bool
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
-                    count = 0;
+                    count = 0; // reset the counter
                 }
                 else
                 {
                     count++; //Increment the counter
                 }
             }
-            if (fifo_command.tail != fifo_command.head) // control that the buffer is not empty, and if it enter yet in this code before finish
+            if (fifo_command.tail != fifo_command.head) // control if the buffer is not empty
             {
                 if (executing_command == 0){ // if I am not executing a command
-                    //U1TXREG = 'A';
-                    input_move (fifo_command.msg[fifo_command.tail][0]);
-                    //U1TXREG = fifo_command.msg[fifo_command.tail][0];
+                    //U1TXREG = 'A'; // debug print
+                    input_move (fifo_command.msg[fifo_command.tail][0]); // move the wheels
+                    //U1TXREG = fifo_command.msg[fifo_command.tail][0]; // debug print
                     count = 0; // start/ reset the counter
                     executing_command = 1; // set the boolean now I am doing an action      
                 }
@@ -269,7 +272,7 @@ int main(void)
                     //U1TXREG = 'B';
                     fifo_command.tail = (fifo_command.tail + 1) % MAX_COMMANDS; // circular increment of the tail
                     count = 0; //reset the counter
-                    executing_command = 0; 
+                    executing_command = 0; // set the bnoleean thaht I am not doing any command
                 }
             }
             else
@@ -286,15 +289,16 @@ int main(void)
         if (return_parser == NEW_MESSAGE)
         {
             return_parser = NO_MESSAGE;
-            if (strcmp(pstate.msg_type, pwm_type) == 0)
+            if (strcmp(pstate.msg_type, pwm_type) == 0) // check if the message_type is equal to PCCMD
             {
                 // Saving the command in the circular buffer
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
-                    // WRITE ON CIRCULAR BUFFER THE ACKNOWLWDGMNENT
+                    // extract the values of the command
                     fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
                     fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
+                    // print the ack everything is good
                     printAck ('1'); 
 
                     // circular increment of the head of the buffer
@@ -302,8 +306,7 @@ int main(void)
                 }
                 else // buffer is full
                 {
-                    // WRITE HERE THE ACK FOR BUFFER FULL 
-                    printAck ('0'); 
+                    printAck ('0'); // 
                 }
             }
         }
