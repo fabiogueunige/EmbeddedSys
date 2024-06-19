@@ -127,7 +127,7 @@ int main(void)
     schedInfo[3].enable = 1;
 
     // Print Infrared task
-    schedInfo[4].n = -4;
+    schedInfo[4].n = -5;
     schedInfo[4].N = 100;
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
@@ -323,7 +323,6 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     IFS0bits.U1TXIF = 0;
 
     // check the UTXBF is not full and the buffer is not empty
-    // TODO
     while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
