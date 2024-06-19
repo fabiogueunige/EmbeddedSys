@@ -104,35 +104,35 @@ int main(void)
                         Defining all the tasks
     ###################################################################*/
     // LED A0 task config
-    schedInfo[0].n = 0;
-    schedInfo[0].N = 1000;
+    schedInfo[0].n = 0; 
+    schedInfo[0].N = 1000; // 1 Hz
     schedInfo[0].f = taskBlinkLedA0;
     schedInfo[0].params = NULL;
     schedInfo[0].enable = 1;
     // indicator task config
     schedInfo[1].n = -2;
-    schedInfo[1].N = 1000;
+    schedInfo[1].N = 1000; // 1 Hz
     schedInfo[1].f = taskBlinkIndicators;
     schedInfo[1].params = NULL;
     schedInfo[1].enable = 1;
     
     // ADC acquisition task
     schedInfo[2].n = -1;
-    schedInfo[2].N = 1;
+    schedInfo[2].N = 1; // 1 kHz
     schedInfo[2].f = taskADCSensing;
     schedInfo[2].params = (void*)(&data_values);
     schedInfo[2].enable = 1;
     
     // Print Battery task
     schedInfo[3].n = -55;
-    schedInfo[3].N = 1000;
+    schedInfo[3].N = 1000; // 1 Hz
     schedInfo[3].f = taskPrintBattery;
     schedInfo[3].params = (void*)(&data_values);
     schedInfo[3].enable = 1;
 
     // Print Infrared task
     schedInfo[4].n = -5;
-    schedInfo[4].N = 100;
+    schedInfo[4].N = 100;  // 10 Hz
     schedInfo[4].f = taskPrintInfrared;
     schedInfo[4].params = (void*)(&data_values);
     schedInfo[4].enable = 1;
@@ -268,43 +268,45 @@ int main(void)
         
         scheduler(schedInfo, MAX_TASKS);
         
+        // check if the distance is between the emergency stop and the pre-emergency stop, in this case I have to slow down the car
         if((data_values.infraRed_data < PRE_EMERGENCY_STOP && data_values.infraRed_data > EMERGENCY_STOP) && data_values.check_slow_down == 0)
         {
             data_values.check_slow_down = 1;
             LATFbits.LATF0 = 0; // set the brakes led as low
             // slowing down
-            input_move(fifo_command.msg[fifo_command.tail][0], WH_SLOW);
+            input_move(fifo_command.msg[fifo_command.tail][0], WH_SLOW); // set the pwm to 50%
         }
+        // check if the distance is more than the PRE_EMERGENCY_STOP, in this case I have to reaccelerate the car
         if (data_values.infraRed_data > PRE_EMERGENCY_STOP && data_values.check_slow_down == 1)
         {
             data_values.check_slow_down = 0;
             // reaccelerating
-            input_move(fifo_command.msg[fifo_command.tail][0], WH_FAST);
-            LATFbits.LATF0 = 0; // set the brakes led as low
+            input_move(fifo_command.msg[fifo_command.tail][0], WH_FAST); // set the pwm to 80%
+            LATFbits.LATF0 = 0; // set the brakes led as low 
         }
         
-        // check if the parser has received a new message
+        // check if the parser has received a new message, and it is formatted in correct way
         if (return_parser == NEW_MESSAGE)
         {
-            return_parser = NO_MESSAGE;
-            if (strcmp(pstate.msg_type, pwm_type) == 0)
+            return_parser = NO_MESSAGE; 
+            if (strcmp(pstate.msg_type, pwm_type) == 0) // check if the type of the message is correct (chek if it is PCCMD)
             {
                 // Saving the command in the circular buffer
                 if ((fifo_command.head + 1) % MAX_COMMANDS != fifo_command.tail) // if the buffer is not full
                 {
-                    // extract the values
+                    // extract the values converted in integer
                     fifo_command.msg[fifo_command.head][0] = extract_integer(pstate.msg_payload);
                     fifo_command.msg[fifo_command.head][1] = extract_integer(pstate.msg_payload + next_value(pstate.msg_payload, 0));
                     
-                    // print there is more space
-                    printAck ('1'); 
+                    // print ack
+                    printAck ('1'); // 1 means that the command has been received in fifo_command correctly
 
                     // circular increment of the head of the buffer
                     fifo_command.head = (fifo_command.head + 1) % MAX_COMMANDS;
                 }
                 else // buffer is full
                 {
-                    printAck ('0'); 
+                    printAck ('0'); // MACK0 means that the buffer is full and the command has been discarded 
                 }
             }
         }
@@ -407,7 +409,7 @@ void taskBlinkIndicators (void* param)
 void taskADCSensing(void* param)
 {
     data* cd = (data*) param;
-    while(!AD1CON1bits.DONE);
+    if(!AD1CON1bits.DONE);
     int potBitsBatt = ADC1BUF0;
     int potBitsIr = ADC1BUF1;
     cd->battery_data = battery_conversion((float) potBitsBatt); 
