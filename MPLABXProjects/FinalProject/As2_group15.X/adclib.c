@@ -1,6 +1,6 @@
 /*
  * File:   adclib.c
- * Author: fabio
+ * Author: Chiappe, Di Donna, Guelfi, Utegaliyeva
  *
  * Created on June 13, 2024, 3:15 PM
  */

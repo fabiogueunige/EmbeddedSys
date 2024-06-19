@@ -9,8 +9,6 @@
 #include "xc.h"
 #include "timer.h"
 
-int count_seconds = 0;
-
 void tmr_setup_period(int timer, int ms)
 {
     float prescaler = 256.0;
@@ -89,99 +87,6 @@ int tmr_wait_period(int timer)
         {
             IFS1bits.T5IF = 0;
             return 1;
-        }
-    }  
-    return 0;
-}
-
-int tmr_wait_second(int timer, int reps)
-{
-    reps *= 5;
-    if (count_seconds == 0)
-    {
-        tmr_setup_period(timer, 200);
-        return 3;
-    }
-    if(timer == TIMER1){
-        
-        if (IFS0bits.T1IF == 1)
-        {
-            if (count_seconds < reps)
-            {
-                count_seconds++;
-                tmr_setup_period(timer, 200);
-                return 2;
-            }
-            else
-            {
-                count_seconds = 0;
-                IFS0bits.T1IF = 0;
-                return 1;
-            }
-        } 
-    }else if(timer == TIMER2){
-        if (IFS0bits.T2IF == 1)
-        {
-            if (count_seconds < reps)
-            {
-                count_seconds++;
-                tmr_setup_period(timer, 200);
-                return 2;
-            }
-            else
-            {
-                count_seconds = 0;
-                IFS0bits.T2IF = 0;
-                return 1;
-            }
-        }
-    }else if(timer == TIMER3){
-        if (IFS0bits.T3IF == 1)
-        {
-            if (count_seconds < reps)
-            {
-                count_seconds++;
-                tmr_setup_period(timer, 200);
-                return 2;
-            }
-            else
-            {
-                count_seconds = 0;
-                IFS0bits.T3IF = 0;
-                return 1;
-            }
-        }
-    }else if(timer == TIMER4){
-        if (IFS1bits.T4IF == 1)
-        {
-            if (count_seconds < reps)
-            {
-                count_seconds++;
-                tmr_setup_period(timer, 200);
-                return 2;
-            }
-            else
-            {
-                count_seconds = 0;
-                IFS1bits.T4IF = 0;
-                return 1;
-            }
-        }
-    }else if(timer == TIMER5){
-        if (IFS1bits.T5IF == 1)
-        {
-            if (count_seconds < reps)
-            {
-                count_seconds++;
-                tmr_setup_period(timer, 200);
-                return 2;
-            }
-            else
-            {
-                count_seconds = 0;
-                IFS1bits.T5IF = 0;
-                return 1;
-            }
         }
     }  
     return 0;
