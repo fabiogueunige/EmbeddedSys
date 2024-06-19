@@ -266,7 +266,6 @@ int main(void)
             }
         }
         
-      
         scheduler(schedInfo, MAX_TASKS);
         
         if((data_values.infraRed_data < PRE_EMERGENCY_STOP && data_values.infraRed_data > EMERGENCY_STOP) && data_values.check_slow_down == 0)
