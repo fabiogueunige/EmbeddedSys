@@ -189,11 +189,11 @@ section                    address   length (PC units)   length (bytes) (dec)
 -------                    -------   -----------------   --------------------
 .text                        0x200              0x27c8          0x3bac  (15276)
 .const                      0x29c8                0x1a            0x27  (39)
-.text                       0x29e2               0xbba          0x1197  (4503)
-.dinit                      0x359c                0x5c            0x8a  (138)
-.text                       0x35f8                0x30            0x48  (72)
+.text                       0x29e2               0xbc2          0x11a3  (4515)
+.dinit                      0x35a4                0x5c            0x8a  (138)
+.text                       0x3600                0x30            0x48  (72)
 
-                 Total "program" memory used (bytes):         0x4e3c  (20028) 3%
+                 Total "program" memory used (bytes):         0x4e48  (20040) 3%
 
 
 Auxflash Memory  [Origin = 0x7fc000, Length = 0x3ffa]
@@ -343,32 +343,32 @@ External Symbols in Program Memory (by address):
                   0x002c9a                  _taskBlinkLedA0
                   0x002cbc                  _taskBlinkIndicators
                   0x002cfe                  _taskADCSensing
-                  0x002d58                  _taskPrintBattery
-                  0x002dd8                  _taskPrintInfrared
-                  0x002e58                  _printAck
-                  0x002ed2                  _parse_byte
-                  0x002fd2                  _extract_integer
-                  0x00306c                  _next_value
-                  0x0030a8                  _tmr_setup_period
-                  0x0031e4                  _tmr_wait_period
-                  0x00325a                  _tmr_wait_ms
-                  0x003274                  _pwmRemap
-                  0x0032d0                  _pwmParametrization
-                  0x00332e                  _pwmConfig
-                  0x00333a                  _moveForward
-                  0x00334e                  _moveBack
-                  0x003362                  _whstop
-                  0x003370                  _moveLeft
-                  0x003382                  _moveRight
-                  0x003394                  _input_move
-                  0x0033d4                  _adc_scanmode_config
-                  0x0033fc                  _battery_conversion
-                  0x00341e                  _bit2volt
-                  0x00343e                  _volt2cm
-                  0x0034c2                  _scheduler
-                  0x003532                  _fifo_init
-                  0x003560                  _fifo_pwm_init
-                  0x0035f8                  _uart_config
+                  0x002d60                  _taskPrintBattery
+                  0x002de0                  _taskPrintInfrared
+                  0x002e60                  _printAck
+                  0x002eda                  _parse_byte
+                  0x002fda                  _extract_integer
+                  0x003074                  _next_value
+                  0x0030b0                  _tmr_setup_period
+                  0x0031ec                  _tmr_wait_period
+                  0x003262                  _tmr_wait_ms
+                  0x00327c                  _pwmRemap
+                  0x0032d8                  _pwmParametrization
+                  0x003336                  _pwmConfig
+                  0x003342                  _moveForward
+                  0x003356                  _moveBack
+                  0x00336a                  _whstop
+                  0x003378                  _moveLeft
+                  0x00338a                  _moveRight
+                  0x00339c                  _input_move
+                  0x0033dc                  _adc_scanmode_config
+                  0x003404                  _battery_conversion
+                  0x003426                  _bit2volt
+                  0x003446                  _volt2cm
+                  0x0034ca                  _scheduler
+                  0x00353a                  _fifo_init
+                  0x003568                  _fifo_pwm_init
+                  0x003600                  _uart_config
 
 External Symbols in Program Memory (by name):
 
@@ -449,32 +449,32 @@ External Symbols in Program Memory (by name):
                   0x0009de                  __typef
                   0x000980                  __unpackdnrmf
                   0x000aca                  __unpackf
-                  0x0033d4                  _adc_scanmode_config
+                  0x0033dc                  _adc_scanmode_config
                   0x001f90                  _atoi
-                  0x0033fc                  _battery_conversion
-                  0x00341e                  _bit2volt
-                  0x002fd2                  _extract_integer
+                  0x003404                  _battery_conversion
+                  0x003426                  _bit2volt
+                  0x002fda                  _extract_integer
                   0x00156e                  _fabsf
-                  0x003532                  _fifo_init
-                  0x003560                  _fifo_pwm_init
+                  0x00353a                  _fifo_init
+                  0x003568                  _fifo_pwm_init
                   0x0028d0                  _floorl
-                  0x003394                  _input_move
+                  0x00339c                  _input_move
                   0x0029e2                  _main
                   0x001fdc                  _memcpy
                   0x001fea                  _memset
-                  0x00334e                  _moveBack
-                  0x00333a                  _moveForward
-                  0x003370                  _moveLeft
-                  0x003382                  _moveRight
-                  0x00306c                  _next_value
-                  0x002ed2                  _parse_byte
+                  0x003356                  _moveBack
+                  0x003342                  _moveForward
+                  0x003378                  _moveLeft
+                  0x00338a                  _moveRight
+                  0x003074                  _next_value
+                  0x002eda                  _parse_byte
                   0x000c40                  _powf
-                  0x002e58                  _printAck
-                  0x00332e                  _pwmConfig
-                  0x0032d0                  _pwmParametrization
-                  0x003274                  _pwmRemap
+                  0x002e60                  _printAck
+                  0x003336                  _pwmConfig
+                  0x0032d8                  _pwmParametrization
+                  0x00327c                  _pwmRemap
                   0x001406                  _scalbnf
-                  0x0034c2                  _scheduler
+                  0x0034ca                  _scheduler
                   0x00145a                  _sqrtf
                   0x001588                  _strcmp
                   0x0020b2                  _strcpy
@@ -482,15 +482,15 @@ External Symbols in Program Memory (by name):
                   0x002cfe                  _taskADCSensing
                   0x002cbc                  _taskBlinkIndicators
                   0x002c9a                  _taskBlinkLedA0
-                  0x002d58                  _taskPrintBattery
-                  0x002dd8                  _taskPrintInfrared
-                  0x0030a8                  _tmr_setup_period
-                  0x00325a                  _tmr_wait_ms
-                  0x0031e4                  _tmr_wait_period
+                  0x002d60                  _taskPrintBattery
+                  0x002de0                  _taskPrintInfrared
+                  0x0030b0                  _tmr_setup_period
+                  0x003262                  _tmr_wait_ms
+                  0x0031ec                  _tmr_wait_period
                   0x0020f0                  _tolower
-                  0x0035f8                  _uart_config
-                  0x00343e                  _volt2cm
-                  0x003362                  _whstop
+                  0x003600                  _uart_config
+                  0x003446                  _volt2cm
+                  0x00336a                  _whstop
 
 Memory Configuration
 
@@ -3971,47 +3971,47 @@ __c30_signature
 .const              0xa9c8         0x1a load address 0x0029c8  
  .const             0xa9c8         0x1a build/default/production/main.o
 
-.text             0x0029e2        0xbba
- .text            0x0029e2        0x4f0 build/default/production/main.o
+.text             0x0029e2        0xbc2
+ .text            0x0029e2        0x4f8 build/default/production/main.o
                   0x0029e2                  _main
                   0x002c9a                  _taskBlinkLedA0
                   0x002cbc                  _taskBlinkIndicators
                   0x002cfe                  _taskADCSensing
-                  0x002d58                  _taskPrintBattery
-                  0x002dd8                  _taskPrintInfrared
-                  0x002e58                  _printAck
- .text            0x002ed2        0x1d6 build/default/production/parser.o
-                  0x002ed2                  _parse_byte
-                  0x002fd2                  _extract_integer
-                  0x00306c                  _next_value
- .text            0x0030a8        0x1cc build/default/production/timer.o
-                  0x0030a8                  _tmr_setup_period
-                  0x0031e4                  _tmr_wait_period
-                  0x00325a                  _tmr_wait_ms
- .text            0x003274        0x160 build/default/production/pwmlib.o
-                  0x003274                  _pwmRemap
-                  0x0032d0                  _pwmParametrization
-                  0x00332e                  _pwmConfig
-                  0x00333a                  _moveForward
-                  0x00334e                  _moveBack
-                  0x003362                  _whstop
-                  0x003370                  _moveLeft
-                  0x003382                  _moveRight
-                  0x003394                  _input_move
- .text            0x0033d4         0xee build/default/production/adclib.o
-                  0x0033d4                  _adc_scanmode_config
-                  0x0033fc                  _battery_conversion
-                  0x00341e                  _bit2volt
-                  0x00343e                  _volt2cm
- .text            0x0034c2         0x70 build/default/production/scheduler.o
-                  0x0034c2                  _scheduler
- .text            0x003532         0x6a build/default/production/circularbufferlib.o
-                  0x003532                  _fifo_init
-                  0x003560                  _fifo_pwm_init
+                  0x002d60                  _taskPrintBattery
+                  0x002de0                  _taskPrintInfrared
+                  0x002e60                  _printAck
+ .text            0x002eda        0x1d6 build/default/production/parser.o
+                  0x002eda                  _parse_byte
+                  0x002fda                  _extract_integer
+                  0x003074                  _next_value
+ .text            0x0030b0        0x1cc build/default/production/timer.o
+                  0x0030b0                  _tmr_setup_period
+                  0x0031ec                  _tmr_wait_period
+                  0x003262                  _tmr_wait_ms
+ .text            0x00327c        0x160 build/default/production/pwmlib.o
+                  0x00327c                  _pwmRemap
+                  0x0032d8                  _pwmParametrization
+                  0x003336                  _pwmConfig
+                  0x003342                  _moveForward
+                  0x003356                  _moveBack
+                  0x00336a                  _whstop
+                  0x003378                  _moveLeft
+                  0x00338a                  _moveRight
+                  0x00339c                  _input_move
+ .text            0x0033dc         0xee build/default/production/adclib.o
+                  0x0033dc                  _adc_scanmode_config
+                  0x003404                  _battery_conversion
+                  0x003426                  _bit2volt
+                  0x003446                  _volt2cm
+ .text            0x0034ca         0x70 build/default/production/scheduler.o
+                  0x0034ca                  _scheduler
+ .text            0x00353a         0x6a build/default/production/circularbufferlib.o
+                  0x00353a                  _fifo_init
+                  0x003568                  _fifo_pwm_init
 
-.dinit            0x00359c         0x5c
- .dinit           0x00359c         0x5c data_init
+.dinit            0x0035a4         0x5c
+ .dinit           0x0035a4         0x5c data_init
 
-.text             0x0035f8         0x30
- .text            0x0035f8         0x30 build/default/production/uartlib.o
-                  0x0035f8                  _uart_config
+.text             0x003600         0x30
+ .text            0x003600         0x30 build/default/production/uartlib.o
+                  0x003600                  _uart_config

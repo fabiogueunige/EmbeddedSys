@@ -409,7 +409,7 @@ void taskBlinkIndicators (void* param)
 void taskADCSensing(void* param)
 {
     data* cd = (data*) param;
-    if(!AD1CON1bits.DONE);
+    while(!AD1CON1bits.DONE);
     int potBitsBatt = ADC1BUF0;
     int potBitsIr = ADC1BUF1;
     cd->battery_data = battery_conversion((float) potBitsBatt); 
