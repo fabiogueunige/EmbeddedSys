@@ -1,3 +1,10 @@
+# GRANDE DIDO
+come si può vedere dall'ultimo commit ha risolto tutto Dido.
+Andre invece non sa programmare
+Fabio usa troppi booleani inutili
+
+Grandi raga!! Bel miracolo!!!
+
 
 # EmbeddedSys
 
