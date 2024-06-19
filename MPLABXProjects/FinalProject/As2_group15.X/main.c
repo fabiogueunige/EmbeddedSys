@@ -323,8 +323,8 @@ void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void)
     IFS0bits.U1TXIF = 0;
 
     // check the UTXBF is not full and the buffer is not empty
-    // TODO:
-    if((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
+    // TODO
+    while((U1STAbits.UTXBF != 1) && (data_values.fifo_write.tail != data_values.fifo_write.head))
     {
         U1TXREG = data_values.fifo_write.msg[data_values.fifo_write.tail]; // write the value of circula buffer isndie the uart1 buffer
         
