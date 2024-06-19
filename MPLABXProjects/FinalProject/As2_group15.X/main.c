@@ -34,8 +34,8 @@
 /* ################################################################
                         Interrupt functions
 ###################################################################*/
-void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void); // timer interrupt for debouncing
-void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void);  // button interrupt
+void __attribute__((__interrupt__, __auto_psv__)) _T1Interrupt(void);  // timer interrupt for debouncing
+void __attribute__((__interrupt__, __auto_psv__)) _INT1Interrupt(void); // button interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1TXInterrupt(void); // uart trasmission interrupt
 void __attribute__((__interrupt__, __auto_psv__)) _U1RXInterrupt(void); // uart reception interrupt
 
@@ -50,7 +50,7 @@ void taskPrintBattery(void* ); // task for the battery print on circular buffer
 void taskPrintInfrared (void* ); // task for the infrared print on circular buffer
 
 // main functions
-void printAck (char ); // task for the ack print on circular buffer
+void printAck (char ); // task for print ack on circular buffer
 
 
 /* ################################################################
@@ -159,7 +159,7 @@ int main(void)
 
     // beam headlights setup
     TRISAbits.TRISA7 = 0; // set the beam headlights as output
-    LATAbits.LATA7 = 1; // set the beam headlights as high
+    LATAbits.LATA7 = 0; // set the beam headlights as high
     
     /* ################################################################
                         pin remap and setup of the buttons
@@ -191,12 +191,12 @@ int main(void)
     ###################################################################*/
     // select the scan pin
     AD1CSSLbits.CSS11 = 1; // Enable AN11 for scan (battery)
-    AD1CSSLbits.CSS15 = 1; // Enable AN14 for scan (infra-red)
+    AD1CSSLbits.CSS15 = 1; // Enable AN15 for scan (infra-red)
     
     ANSELBbits.ANSB11 = 0x0001; // battery input as analog value
-    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value (usually AN14 e B9 or the other does't work)
-    
-    //MUST BE LAST THING TO DO:
+    ANSELBbits.ANSB15 = 0x0001; // IR input as analog value
+
+    // MUST BE LAST THING TO DO:
     AD1CON1bits.ADON = 1; // turn ADC on
     
     /* ################################################################
@@ -228,6 +228,7 @@ int main(void)
     {
         if (state == WAIT_FOR_START)
         {
+            LATAbits.LATA7 = 1; // set the beam headlights as low
             whstop(); // stop the wheels
             schedInfo[1].enable = 1; // enable the indicators
             if (counter_for_timer == fifo_command.msg[fifo_command.tail][1] && fifo_command.tail != fifo_command.head)
@@ -238,6 +239,7 @@ int main(void)
         }
         if (state == EXECUTE)
         {
+            LATAbits.LATA7 = 1; // set the beam headlights as high
             schedInfo[1].enable = 0; // disable the indicators
             
             // check the control buffer is not empty
